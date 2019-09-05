@@ -1,23 +1,23 @@
-﻿using System.Xml.Linq;
+﻿using System.Data;
 using System.IO;
-using System.Data;
+using System.Xml.Linq;
 
 
 
 namespace OblikCleaner
 {
-   public class Counters
+    public class Counters
     {
         public DataTable tblCounters { get; set; }                  //Таблица для хранения списка счетчиков
         const string counters_file = "counters.xml";                //Имя XML с данными
         private XDocument xCountersFile;                            //Привязка к XML
-        
+
         //Создание шаблона таблицы
         public Counters()
         {
             DataColumn column;      //Тип "столбец таблицы"
             tblCounters = new DataTable("counters");
-            
+
             //Создание структуры таблицы
 
             //Название счетчика
@@ -28,7 +28,7 @@ namespace OblikCleaner
             column.Unique = false;
             column.AllowDBNull = true;
             tblCounters.Columns.Add(column);
-            
+
             //Порт подключения счетчика
             column = new DataColumn();
             column.DataType = typeof(int);
@@ -38,7 +38,7 @@ namespace OblikCleaner
             column.DefaultValue = 1;
             column.AllowDBNull = false;
             tblCounters.Columns.Add(column);
-            
+
             //Адрес счетчика
             column = new DataColumn();
             column.DataType = typeof(int);
@@ -48,7 +48,7 @@ namespace OblikCleaner
             column.AllowDBNull = false;
             column.DefaultValue = 0;
             tblCounters.Columns.Add(column);
-           
+
             //Количество записей суточного графика
             column = new DataColumn();
             column.DataType = typeof(string);
@@ -71,7 +71,7 @@ namespace OblikCleaner
 
             LoadData(); // Загрузка данных из файла, если он существует
         }
-        
+
         //Загрузка структуры данных XML       
         private void LoadData()
         {
@@ -108,6 +108,6 @@ namespace OblikCleaner
             xCountersFile.Add(counters);
             xCountersFile.Save(counters_file);
         }
-  
+
     }
 }

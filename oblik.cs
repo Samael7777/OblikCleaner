@@ -2,7 +2,6 @@
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
-using System.ComponentModel;
 
 namespace Obliks
 {
@@ -24,7 +23,7 @@ namespace Obliks
         object SerialIncoming;          //Монитор таймаута чтения порта
 
         //Интерфейс класса
-        
+
         //Структура ответа счетчика
         public int L1Result { get; set; }                //Результат фрейма L1
         public string L1ResultMsg { get; set; }          //Результат фрейма L1, расшифровка
@@ -34,7 +33,7 @@ namespace Obliks
         public string L2ResultMsg { get; set; }          //Результат запроса L2, расшифровка
         public int L2Lenght { get; set; }                //Количество данных, успешно обработанных операцией
         public byte[] L2Data { get; set; }               //Данные L2
-        public byte [] RawResponse
+        public byte[] RawResponse
         {
             get => _rbuf;
         }                    //Сырые данные со счетчика
@@ -63,7 +62,7 @@ namespace Obliks
         }       //Последнее сообщение об ошибке
         public string Password
         {
-            set =>_passwd = Encoding.Default.GetBytes(value);
+            set => _passwd = Encoding.Default.GetBytes(value);
             get => Encoding.Default.GetString(_passwd);
         }       //Пароль счетчика
         public int User
@@ -93,8 +92,8 @@ namespace Obliks
             SerialIncoming = new object();
         }
         public Oblik(int port, int addr, int timeout, int repeats) : this(port, 9600, addr, timeout, repeats, "") { }
-        public Oblik(int port, int addr) : this (port, 9600, addr, 500, 2, "") { }
-        
+        public Oblik(int port, int addr) : this(port, 9600, addr, 500, 2, "") { }
+
         //Удаление объекта класса и очистка мусора
         public void Dispose()
         {
@@ -136,9 +135,9 @@ namespace Obliks
         {
             byte[] _l1;                                                     //Посылка 1 уровня
             byte[] _l2;                                                     //Посылка 2 уровня
-            if (AccType > 0 ) { AccType = 1; }                              //Все, что больше 0 - команда на запись
-            //Формируем запрос L2
-            
+            if (AccType > 0) { AccType = 1; }                              //Все, что больше 0 - команда на запись
+                                                                           //Формируем запрос L2
+
             _l2 = new byte[5 + (len + 8) * AccType];                        //5 байт заголовка + 8 байт пароля + данные 
             _l2[0] = (byte)((segment & 127) + AccType * 128);               //(биты 0 - 6 - номер сегмента, бит 7 = 1 - операция записи)
             _l2[1] = _user;                                                 //Указываем пользователя
@@ -147,7 +146,7 @@ namespace Obliks
             _l2[4] = len;                                                   //Размер считываемых данных
 
             //Если команда - на запись в сегмент
-            if (AccType > 0)                                
+            if (AccType > 0)
             {
                 Array.Copy(data, 0, _l2, 5, len);                               //Копируем данные в L2
                 Array.Copy(_passwd, 0, _l2, len + 5, 8);                        //Копируем пароль в L2
@@ -156,7 +155,7 @@ namespace Obliks
                 byte _dpsize = (byte)(len + 8);                       //Размер "Данные + "Пароль" 
                 byte _xorPass = 0x3A;
                 for (int i = 0; i <= 7; i++) { _xorPass ^= _passwd[i]; }
-                for (int i = 1; i <= _dpsize ; i++)
+                for (int i = 1; i <= _dpsize; i++)
                 {
                     _l2[i + 4] = (byte)(_l2[i + 4] ^ _l2[i + 3] ^ _xorPass ^ _passwd[(_dpsize - i + 1) % 8]);
                     _xorPass = (byte)((_xorPass + _dpsize - i) % 256);
@@ -170,7 +169,7 @@ namespace Obliks
             _l1[2] = (byte)(_addr & 0xff);              //Адрес счетчика
             _l1[3] = (byte)(3 + _l2.Length);            //Длина пакета L1 без ключей
             Array.Copy(_l2, 0, _l1, 4, _l2.Length);     //Вставляем запрос L2 в пакет L1
-            
+
             //Вычисление контрольной суммы, побайтовое XOR, от поля "Адрес" до поля "L2"
             _l1[_l1.Length - 1] = 0;
             for (int i = 2; i < (_l1.Length - 1); i++)
@@ -220,15 +219,15 @@ namespace Obliks
                         _error_txt = L1ResultMsg;
                     }
                 }
-            
+
             }
-            
+
         }
 
         //Получить количество записей суточного графика
         public int GetDayGraphRecs()
         {
-            SegmentAccsess(44,0,2,null,0);
+            SegmentAccsess(44, 0, 2, null, 0);
             //Порядок байт в счетчике - обратный по отношению к пк, переворачиваем
             if (!_isError)
             {
@@ -265,7 +264,7 @@ namespace Obliks
             _tbuf[3] = (byte)(_ctime & 0xff);
             SegmentAccsess(65, 0, (byte)_tbuf.Length, _tbuf, 1);
         }
-        
+
         //Парсер ошибок L1
         private string ParseL1error(int error)
         {
@@ -273,7 +272,7 @@ namespace Obliks
             switch (error)
             {
                 case 1:
-                    res =  "Успешное выполнение запроса";
+                    res = "Успешное выполнение запроса";
                     break;
                 case 0xff:
                     res = "Ошибка контрольной суммы";
@@ -336,7 +335,7 @@ namespace Obliks
             }
             return res;
         }
-        
+
         // Событие чтения данных из порта
         void DataReciever(object s, SerialDataReceivedEventArgs ea)
         {
@@ -350,7 +349,7 @@ namespace Obliks
         }
 
         //Отправка запроса и получение данных WData - запрос, _rbuf - ответ
-        void RSExchange (byte[] WData)
+        void RSExchange(byte[] WData)
         {
             _isError = false;
             _error_txt = "";
@@ -370,7 +369,7 @@ namespace Obliks
                 com.Handshake = Handshake.None;
                 if (com.IsOpen) { com.Close(); }    //закрыть ранее открытый порт
                 com.Open();
-                
+
                 //Отправка данных
                 com.DiscardOutBuffer();                                                                 //очистка буфера передачи
                 com.DataReceived += new SerialDataReceivedEventHandler(DataReciever);                   //событие чтения из порта
@@ -410,6 +409,6 @@ namespace Obliks
                 WData = null;
             }
         }
-        
+
     }
 }

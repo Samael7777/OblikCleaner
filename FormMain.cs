@@ -1,15 +1,15 @@
-﻿using System;
-using System.Windows.Forms;
-using System.ServiceProcess;
-using Obliks;
+﻿using Obliks;
+using System;
 using System.IO;
+using System.ServiceProcess;
+using System.Windows.Forms;
 
 
 namespace OblikCleaner
 {
-    
+
     public partial class frmMain : Form
-    
+
     {
         //Инициализация базовых структур
         Settings settings = new Settings();                                                 //Основные настройки
@@ -26,10 +26,10 @@ namespace OblikCleaner
         }
 
         //Методы пользователя
-        private void MassAction (MyAction action)                                              //Массовая операция над выделенными строками
+        private void MassAction(MyAction action)                                              //Массовая операция над выделенными строками
         {
             bool MassSel = false;
-            for (int i =  0; i < counters.tblCounters.Rows.Count; i++)
+            for (int i = 0; i < counters.tblCounters.Rows.Count; i++)
             {
                 if (dgCounters.Rows[i].Cells["sel"].Value != null && (bool)dgCounters.Rows[i].Cells["sel"].Value == true)
                 {
@@ -84,7 +84,7 @@ namespace OblikCleaner
 
             dgCounters.Columns["addr"].HeaderText = "Адрес";
             dgCounters.Columns["addr"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
-            
+
             dgCounters.Columns["dg_recs"].HeaderText = "Записей СГ";
             dgCounters.Columns["dg_recs"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
@@ -252,7 +252,7 @@ namespace OblikCleaner
                         _log.WriteLine(line);
                     }
                 }
-                
+
             }
             catch (Exception e)
             {
@@ -277,7 +277,7 @@ namespace OblikCleaner
         private void BtnDel_Click(object sender, EventArgs e)                           //Удаление выбранных счетчиков
         {
             DialogResult dialogResult = MessageBox.Show("Удалить выбранные записи?", "Подтверждение", MessageBoxButtons.OKCancel);
-            if(dialogResult == DialogResult.OK)
+            if (dialogResult == DialogResult.OK)
             {
                 MassDelete();
             }
@@ -306,7 +306,7 @@ namespace OblikCleaner
         private void BtnGetdata_Click(object sender, EventArgs e)
         {
             MyAction action = new MyAction(GetDGRecs);
-            MassAction(action);           
+            MassAction(action);
         }
         private void BtnDelDG_Click(object sender, EventArgs e)
         {
