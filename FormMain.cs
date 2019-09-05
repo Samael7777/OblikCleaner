@@ -227,7 +227,6 @@ namespace OblikCleaner
             if (!oblik.isError)
             {
                 LogLine("Текущее время установлено");
-                GetDGRecs(index);
             }
             else
             {

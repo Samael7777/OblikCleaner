@@ -152,13 +152,17 @@ namespace Obliks
                 Array.Copy(_passwd, 0, _l2, len + 5, 8);                        //Копируем пароль в L2
 
                 //Шифрование полей "Данные" и "Пароль". Сперто из оригинальной процедуры шифрования
-                byte _dpsize = (byte)(len + 8);                       //Размер "Данные + "Пароль" 
-                byte _xorPass = 0x3A;
-                for (int i = 0; i <= 7; i++) { _xorPass ^= _passwd[i]; }
-                for (int i = 1; i <= _dpsize; i++)
+                byte _x1 = 0x3A;
+                for (int i = 0; i <= 7; i++) { _x1 ^= _passwd[i]; }
+                byte _dpcsize = (byte)(len + 8);                                //Размер "Данные + "Пароль" 
+                int k = 4;
+                for (int i = _dpcsize - 1; i >= 0; i--)
                 {
-                    _l2[i + 4] = (byte)(_l2[i + 4] ^ _l2[i + 3] ^ _xorPass ^ _passwd[(_dpsize - i + 1) % 8]);
-                    _xorPass = (byte)((_xorPass + _dpsize - i) % 256);
+                    byte _x2 = _l2[k++];
+                    _l2[k] ^= _x1;
+                    _l2[k] ^= _x2;
+                    _l2[k] ^= _passwd[i % 8];
+                    _x1 += (byte)i;
                 }
             }
 
