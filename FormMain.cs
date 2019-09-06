@@ -5,6 +5,7 @@ using System.ServiceProcess;
 using System.Windows.Forms;
 
 
+
 namespace OblikCleaner
 {
 
@@ -12,7 +13,6 @@ namespace OblikCleaner
 
     {
         //Инициализация базовых структур
-        Settings settings = new Settings();                                                 //Основные настройки
         Counters counters = new Counters();                                                 //Инициализация списка счетчиков
         ServiceController odcs = new ServiceController("OasysDataCollectionService");       //Управление службой опроса
         ServiceController omms = new ServiceController("OasysMetersMonitoringService");     //Управление службой мониторинга
@@ -62,10 +62,11 @@ namespace OblikCleaner
         }
         private void SetSettings()                                                              // Начальные настройки формы
         {
-            numRepeats.Value = settings.repeats;
-            numTimeout.Value = settings.timeout;
-            chkSaveLogs.Checked = settings.SaveLogs;
-            chkService.Checked = settings.StopService;
+            Settings.GetSettings();
+            numRepeats.Value = Settings.repeats;
+            numTimeout.Value = Settings.timeout;
+            chkSaveLogs.Checked = Settings.SaveLogs;
+            chkService.Checked = Settings.StopService;
         }
         private void CreareDataTable()                                                          //Настройка отображения таблицы счетчиков
         {
@@ -244,7 +245,7 @@ namespace OblikCleaner
                 string line = _ctime + " : " + rec;
                 string filename = _cdate.ToString("yyyy-MM-dd") + ".log";
                 log.Items.Add(line);
-                if (settings.SaveLogs)
+                if (Settings.SaveLogs)
                 {
                     using (StreamWriter _log = new StreamWriter(filename, true, System.Text.Encoding.Default))
                     {
@@ -259,10 +260,14 @@ namespace OblikCleaner
             }
 
         }
+        private void GetOblikCounters()                                                         //Получить список счетчиков из БД Облик
+        {
+
+        }
 
         //Обработчики событий элементов формы
-        private void NumTimeout_ValueChanged(object sender, EventArgs e) => settings.timeout = (int)numTimeout.Value;
-        private void NumRepeats_ValueChanged(object sender, EventArgs e) => settings.repeats = (int)numRepeats.Value;
+        private void NumTimeout_ValueChanged(object sender, EventArgs e) => Settings.timeout = (int)numTimeout.Value;
+        private void NumRepeats_ValueChanged(object sender, EventArgs e) => Settings.repeats = (int)numRepeats.Value;
         private void FrmMain_FormClosed(object sender, FormClosedEventArgs e) => counters.SaveData();
         private void CmAdd_Click(object sender, EventArgs e) => counters.tblCounters.Rows.Add();
         private void CmDel_Click(object sender, EventArgs e)                            //Удаление выбранных счетчиков
@@ -296,8 +301,8 @@ namespace OblikCleaner
             }
         }
         private void BtnSave_Click(object sender, EventArgs e) => counters.SaveData();
-        private void ChkSaveLogs_CheckedChanged(object sender, EventArgs e) => settings.SaveLogs = chkSaveLogs.Checked;
-        private void ChkService_CheckedChanged(object sender, EventArgs e) => settings.StopService = chkService.Checked;
+        private void ChkSaveLogs_CheckedChanged(object sender, EventArgs e) => Settings.SaveLogs = chkSaveLogs.Checked;
+        private void ChkService_CheckedChanged(object sender, EventArgs e) => Settings.StopService = chkService.Checked;
         private void BtnAdd_Click(object sender, EventArgs e) => counters.tblCounters.Rows.Add();
         private void DgCounters_CellValueChanged(object sender, DataGridViewCellEventArgs e) => counters.SaveData();
         private void BtnCleanLog_Click(object sender, EventArgs e) => log.Items.Clear();
@@ -309,13 +314,13 @@ namespace OblikCleaner
         }
         private void BtnDelDG_Click(object sender, EventArgs e)
         {
-            if (settings.StopService)
+            if (Settings.StopService)
             {
                 StopOblikServices();
             }
             MyAction action = new MyAction(CleanDGRecs);
             MassAction(action);
-            if (settings.StopService)
+            if (Settings.StopService)
             {
                 StartOblikServices();
             }
@@ -324,6 +329,11 @@ namespace OblikCleaner
         {
             MyAction action = new MyAction(GetDGRecs);
             MassAction(action);
+        }
+        private void BtnSetBD_Click(object sender, EventArgs e)
+        {
+            frmSetDB frmSetDB = new frmSetDB();
+            frmSetDB.Show();
         }
     }
 }

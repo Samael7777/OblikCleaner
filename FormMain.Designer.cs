@@ -51,10 +51,12 @@
             this.log = new System.Windows.Forms.ListBox();
             this.chkService = new System.Windows.Forms.CheckBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
+            this.btnGetDB = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.btnSvcStart = new System.Windows.Forms.Button();
             this.btnSvcStop = new System.Windows.Forms.Button();
             this.groupBox3 = new System.Windows.Forms.GroupBox();
+            this.btnSetBD = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.btnCleanLog = new System.Windows.Forms.Button();
             this.chkSaveLogs = new System.Windows.Forms.CheckBox();
@@ -94,7 +96,7 @@
             this.cmAdd,
             this.cmDel});
             this.cmCounters.Name = "cmCounters";
-            this.cmCounters.Size = new System.Drawing.Size(181, 148);
+            this.cmCounters.Size = new System.Drawing.Size(181, 126);
             // 
             // cmGetData
             // 
@@ -192,7 +194,7 @@
             // 
             // btnDel
             // 
-            this.btnDel.Location = new System.Drawing.Point(6, 48);
+            this.btnDel.Location = new System.Drawing.Point(6, 47);
             this.btnDel.Name = "btnDel";
             this.btnDel.Size = new System.Drawing.Size(125, 23);
             this.btnDel.TabIndex = 5;
@@ -202,7 +204,7 @@
             // 
             // btnSave
             // 
-            this.btnSave.Location = new System.Drawing.Point(6, 77);
+            this.btnSave.Location = new System.Drawing.Point(6, 103);
             this.btnSave.Name = "btnSave";
             this.btnSave.Size = new System.Drawing.Size(125, 23);
             this.btnSave.TabIndex = 9;
@@ -263,15 +265,25 @@
             // 
             // groupBox1
             // 
+            this.groupBox1.Controls.Add(this.btnGetDB);
             this.groupBox1.Controls.Add(this.btnAdd);
             this.groupBox1.Controls.Add(this.btnSave);
             this.groupBox1.Controls.Add(this.btnDel);
             this.groupBox1.Location = new System.Drawing.Point(12, 356);
             this.groupBox1.Name = "groupBox1";
-            this.groupBox1.Size = new System.Drawing.Size(138, 119);
+            this.groupBox1.Size = new System.Drawing.Size(138, 137);
             this.groupBox1.TabIndex = 15;
             this.groupBox1.TabStop = false;
             this.groupBox1.Text = "Управление списком";
+            // 
+            // btnGetDB
+            // 
+            this.btnGetDB.Location = new System.Drawing.Point(6, 75);
+            this.btnGetDB.Name = "btnGetDB";
+            this.btnGetDB.Size = new System.Drawing.Size(125, 23);
+            this.btnGetDB.TabIndex = 19;
+            this.btnGetDB.Text = "Получить из БД";
+            this.btnGetDB.UseVisualStyleBackColor = true;
             // 
             // groupBox2
             // 
@@ -281,7 +293,7 @@
             this.groupBox2.Controls.Add(this.btnDelDG);
             this.groupBox2.Location = new System.Drawing.Point(156, 356);
             this.groupBox2.Name = "groupBox2";
-            this.groupBox2.Size = new System.Drawing.Size(261, 119);
+            this.groupBox2.Size = new System.Drawing.Size(261, 137);
             this.groupBox2.TabIndex = 16;
             this.groupBox2.TabStop = false;
             this.groupBox2.Text = "Управление опросом";
@@ -307,6 +319,7 @@
             // 
             // groupBox3
             // 
+            this.groupBox3.Controls.Add(this.btnSetBD);
             this.groupBox3.Controls.Add(this.label1);
             this.groupBox3.Controls.Add(this.numTimeout);
             this.groupBox3.Controls.Add(this.numRepeats);
@@ -314,17 +327,27 @@
             this.groupBox3.Controls.Add(this.label2);
             this.groupBox3.Location = new System.Drawing.Point(423, 356);
             this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(206, 119);
+            this.groupBox3.Size = new System.Drawing.Size(206, 137);
             this.groupBox3.TabIndex = 17;
             this.groupBox3.TabStop = false;
             this.groupBox3.Text = "Настройки";
+            // 
+            // btnSetBD
+            // 
+            this.btnSetBD.Location = new System.Drawing.Point(9, 104);
+            this.btnSetBD.Name = "btnSetBD";
+            this.btnSetBD.Size = new System.Drawing.Size(125, 23);
+            this.btnSetBD.TabIndex = 19;
+            this.btnSetBD.Text = "Настройка БД Облик";
+            this.btnSetBD.UseVisualStyleBackColor = true;
+            this.btnSetBD.Click += new System.EventHandler(this.BtnSetBD_Click);
             // 
             // groupBox4
             // 
             this.groupBox4.Controls.Add(this.btnCleanLog);
             this.groupBox4.Controls.Add(this.chkSaveLogs);
             this.groupBox4.Controls.Add(this.log);
-            this.groupBox4.Location = new System.Drawing.Point(12, 491);
+            this.groupBox4.Location = new System.Drawing.Point(12, 499);
             this.groupBox4.Name = "groupBox4";
             this.groupBox4.Size = new System.Drawing.Size(617, 146);
             this.groupBox4.TabIndex = 18;
@@ -356,7 +379,7 @@
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
-            this.ClientSize = new System.Drawing.Size(645, 649);
+            this.ClientSize = new System.Drawing.Size(645, 653);
             this.Controls.Add(this.groupBox4);
             this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
@@ -411,6 +434,8 @@
         private System.Windows.Forms.Button btnCleanLog;
         private System.Windows.Forms.Button btnSvcStart;
         private System.Windows.Forms.Button btnSvcStop;
+        private System.Windows.Forms.Button btnGetDB;
+        private System.Windows.Forms.Button btnSetBD;
     }
 }
 

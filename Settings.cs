@@ -3,16 +3,73 @@ using System.Xml.Linq;
 
 namespace OblikCleaner
 {
-    public class Settings
+    public static class Settings
     {
         private const string _settings_file = "settings.xml";
-        private XDocument _xSetFile;
-        private int _timeout;
-        private int _repeats;
-        private bool _savelogs;
-        private bool _stopservice;
+        private static XDocument _xSetFile;
+        private static int _timeout;
+        private static int _repeats;
+        private static bool _savelogs;
+        private static bool _stopservice;
+        private static string _dbpath, _dbserv, _dbuser, _dbpass;
 
-        public bool SaveLogs
+        public static string DBPath
+        {
+            get
+            {
+                _dbpath = (string)_xSetFile.Element("Settings").Element("DBPath").Attribute("Value");
+                return _dbpath;
+            }
+            set
+            {
+                _dbserv = value;
+                _xSetFile.Element("Settings").Element("DBPath").Attribute("Value").Value = _dbserv.ToString();
+                _xSetFile.Save(_settings_file);
+            }
+        }
+        public static string DBSrvName
+        {
+            get
+            {
+                _dbserv = (string)_xSetFile.Element("Settings").Element("DBServ").Attribute("Value");
+                return _dbserv;
+            }
+            set
+            {
+                _dbserv = value;
+                _xSetFile.Element("Settings").Element("DBServ").Attribute("Value").Value = _dbserv.ToString();
+                _xSetFile.Save(_settings_file);
+            }
+        }
+        public static string DBUser
+        {
+            get
+            {
+                _dbuser = (string)_xSetFile.Element("Settings").Element("DBUser").Attribute("Value");
+                return _dbuser;
+            }
+            set
+            {
+                _dbuser = value;
+                _xSetFile.Element("Settings").Element("DBUser").Attribute("Value").Value = _dbuser.ToString();
+                _xSetFile.Save(_settings_file);
+            }
+        }
+        public static string DBPasswd
+        {
+            get
+            {
+                _dbpass = (string)_xSetFile.Element("Settings").Element("DBPass").Attribute("Value");
+                return _dbpass;
+            }
+            set
+            {
+                _dbpass = value;
+                _xSetFile.Element("Settings").Element("DBPass").Attribute("Value").Value = _dbpass.ToString();
+                _xSetFile.Save(_settings_file);
+            }
+        }
+        public static bool SaveLogs
         {
             get
             {
@@ -26,7 +83,7 @@ namespace OblikCleaner
                 _xSetFile.Save(_settings_file);
             }
         }
-        public bool StopService
+        public static bool StopService
         {
             get
             {
@@ -40,7 +97,7 @@ namespace OblikCleaner
                 _xSetFile.Save(_settings_file);
             }
         }
-        public int timeout
+        public static int timeout
         {
             get
             {
@@ -54,7 +111,7 @@ namespace OblikCleaner
                 _xSetFile.Save(_settings_file);
             }
         }
-        public int repeats
+        public static int repeats
         {
             get
             {
@@ -68,13 +125,17 @@ namespace OblikCleaner
                 _xSetFile.Save(_settings_file);
             }
         }
-
-        public Settings() //Constructor
+        public static void GetSettings() //Constructor
         {
             _timeout = 500;
             _repeats = 2;
             _savelogs = true;
             _stopservice = true;
+            _dbpath = "";
+            _dbserv = "localhost";
+            _dbuser = "SYSDBA";
+            _dbpass = "masterkey";
+
             if (!File.Exists(_settings_file))
             {
                 _xSetFile = new XDocument();
@@ -83,10 +144,18 @@ namespace OblikCleaner
                 _xSetFile.Element("Settings").Add(new XElement("Repeats"));
                 _xSetFile.Element("Settings").Add(new XElement("SaveLogs"));
                 _xSetFile.Element("Settings").Add(new XElement("StopService"));
+                _xSetFile.Element("Settings").Add(new XElement("DBPath"));
+                _xSetFile.Element("Settings").Add(new XElement("DBServ"));
+                _xSetFile.Element("Settings").Add(new XElement("DBUser"));
+                _xSetFile.Element("Settings").Add(new XElement("DBPass"));
                 _xSetFile.Element("Settings").Element("Timeout").Add(new XAttribute("Value", _timeout.ToString()));
                 _xSetFile.Element("Settings").Element("Repeats").Add(new XAttribute("Value", _repeats.ToString()));
                 _xSetFile.Element("Settings").Element("SaveLogs").Add(new XAttribute("Value", _savelogs.ToString()));
                 _xSetFile.Element("Settings").Element("StopService").Add(new XAttribute("Value", _stopservice.ToString()));
+                _xSetFile.Element("Settings").Element("DBPath").Add(new XAttribute("Value", _dbpath.ToString()));
+                _xSetFile.Element("Settings").Element("DBServ").Add(new XAttribute("Value", _dbserv.ToString()));
+                _xSetFile.Element("Settings").Element("DBUser").Add(new XAttribute("Value", _dbuser.ToString()));
+                _xSetFile.Element("Settings").Element("DBPass").Add(new XAttribute("Value", _dbpass.ToString()));
                 _xSetFile.Save(_settings_file);
             }
             else
