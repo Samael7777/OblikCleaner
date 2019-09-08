@@ -96,50 +96,50 @@
             this.cmAdd,
             this.cmDel});
             this.cmCounters.Name = "cmCounters";
-            this.cmCounters.Size = new System.Drawing.Size(181, 126);
+            this.cmCounters.Size = new System.Drawing.Size(188, 126);
             // 
             // cmGetData
             // 
             this.cmGetData.Name = "cmGetData";
-            this.cmGetData.Size = new System.Drawing.Size(180, 22);
+            this.cmGetData.Size = new System.Drawing.Size(187, 22);
             this.cmGetData.Text = "Получить данные";
             this.cmGetData.Click += new System.EventHandler(this.CmGetData_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(184, 6);
             // 
             // cmSelAll
             // 
             this.cmSelAll.Name = "cmSelAll";
-            this.cmSelAll.Size = new System.Drawing.Size(180, 22);
+            this.cmSelAll.Size = new System.Drawing.Size(187, 22);
             this.cmSelAll.Text = "Выделить все";
             this.cmSelAll.Click += new System.EventHandler(this.CmSelAll_Click);
             // 
             // cmSelNone
             // 
             this.cmSelNone.Name = "cmSelNone";
-            this.cmSelNone.Size = new System.Drawing.Size(180, 22);
+            this.cmSelNone.Size = new System.Drawing.Size(187, 22);
             this.cmSelNone.Text = "Снять выделение";
             this.cmSelNone.Click += new System.EventHandler(this.CmSelNone_Click);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(184, 6);
             // 
             // cmAdd
             // 
             this.cmAdd.Name = "cmAdd";
-            this.cmAdd.Size = new System.Drawing.Size(180, 22);
+            this.cmAdd.Size = new System.Drawing.Size(187, 22);
             this.cmAdd.Text = "Добавить счетчик";
             this.cmAdd.Click += new System.EventHandler(this.CmAdd_Click);
             // 
             // cmDel
             // 
             this.cmDel.Name = "cmDel";
-            this.cmDel.Size = new System.Drawing.Size(180, 22);
+            this.cmDel.Size = new System.Drawing.Size(187, 22);
             this.cmDel.Text = "Удалить счетчик(и)";
             this.cmDel.Click += new System.EventHandler(this.CmDel_Click);
             // 
@@ -284,6 +284,7 @@
             this.btnGetDB.TabIndex = 19;
             this.btnGetDB.Text = "Получить из БД";
             this.btnGetDB.UseVisualStyleBackColor = true;
+            this.btnGetDB.Click += new System.EventHandler(this.BtnGetDB_Click);
             // 
             // groupBox2
             // 

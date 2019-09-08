@@ -3,7 +3,7 @@ using System;
 using System.IO;
 using System.ServiceProcess;
 using System.Windows.Forms;
-
+using System.Data;
 
 
 namespace OblikCleaner
@@ -334,6 +334,24 @@ namespace OblikCleaner
         {
             frmSetDB frmSetDB = new frmSetDB();
             frmSetDB.Show();
+        }
+
+        private void BtnGetDB_Click(object sender, EventArgs e)
+        {
+            OblikDB.GetList();
+            LogLine(OblikDB.ErrorMsg);
+            if (!OblikDB.isError)
+            {
+                foreach (DataRow dbr in OblikDB.dbOblik.Rows)
+                {
+                    DataRow cr = counters.tblCounters.NewRow();
+                    cr["port"] = dbr["port"];
+                    cr["addr"] = dbr["addr"];
+                    cr["name"] = dbr["name"];
+                    counters.tblCounters.Rows.Add(cr);
+                }
+                dgCounters.Refresh();
+            }
         }
     }
 }
