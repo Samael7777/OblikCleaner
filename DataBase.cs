@@ -2,122 +2,51 @@
 using System;
 using System.Data;
 
+
 namespace OblikCleaner
 {
     public static class OblikDB
     {
-        static private FbConnection con;
+        delegate void MyAction();
+        static private FbConnection con;    //соединение с БД
+   
+        static public bool isError;         //Состояние ошибки
+        static public string ErrorMsg;      //Текст ошибки
+        static public DataTable dbOblik;    //список счетчиков    
 
 
-        static public bool isError;     //Состояние ошибки
-        static public string ErrorMsg;  //Текст ошибки
-        static public DataTable dbOblik;  //список счетчиков    
-     
-        static public void GetList()
+        public static void Initialize() => CreateTableHeaders();
+
+        static public void GetList()                        //Получить список счетчиков из БД
+        {
+            MyAction action = new MyAction(GetCounters);
+            Execute(action);
+        }
+        static public DateTime GetLastAsk(int port, int addr)
         {
             isError = false;
             ErrorMsg = "";
-
-            FbConnectionStringBuilder cs = new FbConnectionStringBuilder();
-            cs.DataSource = Settings.DBSrvName;
-            cs.Database = Settings.DBPath;
-            cs.UserID = Settings.DBUser;
-            cs.Password = Settings.DBPasswd;
-            cs.Charset = "NONE";
-            cs.Pooling = false;
+            string filter = string.Format("addr={0} AND port={1}",addr,port);
+            var cntr = dbOblik.Select(filter);
+            int cntr_id = cntr[0].Field<int>("cntr_id");
+            FbConnectionStringBuilder cs = new FbConnectionStringBuilder
+            {
+                DataSource = Settings.DBSrvName,
+                Database = Settings.DBPath,
+                UserID = Settings.DBUser,
+                Password = Settings.DBPasswd,
+                Charset = "NONE",
+                Pooling = false
+            };
 
             try
             {
                 using (con = new FbConnection(cs.ToString()))
                 {
                     con.Open();
-                    CreateTableHeaders();
-                    GetData();
-                    con.Close();
-                }
-                
-               
-            }
-            catch (Exception e)
-            {
-                isError = true;
-                ErrorMsg = e.Message;
-            }
-
-        }
-
-        static private void CreateTableHeaders()
-        {
-            DataColumn column;
-            dbOblik = new DataTable();
-
-            column = new DataColumn();
-            column.ColumnName = "name";
-            column.DataType = typeof(string);
-            dbOblik.Columns.Add(column);
-
-            column = new DataColumn();
-            column.ColumnName = "port";
-            column.DataType = typeof(int);
-            dbOblik.Columns.Add(column);
-
-            column = new DataColumn();
-            column.ColumnName = "addr";
-            column.DataType = typeof(int);
-            dbOblik.Columns.Add(column);
-
-            column = new DataColumn();
-            column.ColumnName = "net_key";
-            column.DataType = typeof(int);
-            dbOblik.Columns.Add(column);
-
-            column = new DataColumn();
-            column.ColumnName = "cntr_id";
-            column.DataType = typeof(int);
-            dbOblik.Columns.Add(column);
-        }
-        static private void GetData()
-        {
-            FbDataReader reader;
-            FbCommand cmd;
-            string sql;
-            isError = false;
-            try
-            {
-                //Получение списка счетчиков
-                sql = "SELECT * FROM OBLIK";
-                cmd = new FbCommand(sql, con);
-                reader = cmd.ExecuteReader();
-                if (reader.HasRows)
-                {
-                    while (reader.Read())
-                    {
-                        DataRow row = dbOblik.NewRow();
-                        row["addr"] = reader["ADDRESS"];
-                        row["net_key"] = reader["KEY_NETWORK"];
-                        row["cntr_id"] = reader["KEY_COUNTER"];
-                        dbOblik.Rows.Add(row);
-                    }
-                }
-                reader.Close();
-
-                //Получение портов
-                foreach (DataRow row in dbOblik.Rows)
-                {
-                    sql = "SELECT COM_PORT FROM NETWORKS WHERE KEY_NETWORK=@net";
-                    cmd = new FbCommand(sql, con);
-                    FbParameter pNet = new FbParameter("@net", (int)row["net_key"]);
-                    cmd.Parameters.Add(pNet);
-                    reader = cmd.ExecuteReader();
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            row["port"] = reader.GetValue(0);
-                        }
-                    }
-                    reader.Close();
-                    //Получение названий счетчиков
+                    FbDataReader reader;
+                    FbCommand cmd;
+                    string sql;
                     sql = "SELECT " +
                             "FIDERS.NAME_FIDER " +
                             "FROM FIDERS,CHANNELS,CHANNELS_FIDERS " +
@@ -129,25 +58,183 @@ namespace OblikCleaner
                                 "AND (CHANNELS.CHANNEL_NUM = 1) " +
                                 "AND (CHANNELS.KEY_COUNTER = @cntr)" +
                             ")";
-                    cmd = new FbCommand(sql, con);
-                    FbParameter cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
-                    cmd.Parameters.Add(cntr);
-                    reader = cmd.ExecuteReader();
-                    if (reader.HasRows)
-                    {
-                        while (reader.Read())
-                        {
-                            row["name"] = reader.GetValue(0);
-                        }
-                    }
+
+
+
+                    con.Close();
                 }
+
+
             }
             catch (Exception e)
             {
                 isError = true;
                 ErrorMsg = e.Message;
             }
-            
+
+        }
+
+        static private void Execute(MyAction action)        //Выполнить команду БД 
+        {
+            isError = false;
+            ErrorMsg = "";
+
+            FbConnectionStringBuilder cs = new FbConnectionStringBuilder
+            {
+                DataSource = Settings.DBSrvName,
+                Database = Settings.DBPath,
+                UserID = Settings.DBUser,
+                Password = Settings.DBPasswd,
+                Charset = "NONE",
+                Pooling = false
+            };
+
+            try
+            {
+                using (con = new FbConnection(cs.ToString()))
+                {
+                    con.Open();
+                    action.Invoke();
+                    con.Close();
+                }
+
+
+            }
+            catch (Exception e)
+            {
+                isError = true;
+                ErrorMsg = e.Message;
+            }
+        }
+        static private void CreateTableHeaders()            //Создание заголовков таблицы счетчиков
+        {
+            DataColumn column;
+            dbOblik = new DataTable();
+
+            column = new DataColumn
+            {
+                ColumnName = "name",        //имя счетчика
+                DataType = typeof(string)
+            };
+            dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "port",        //COM порт
+                DataType = typeof(int)
+            };
+            dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "addr",        //адрес
+                DataType = typeof(int)
+            };
+            dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "net_key",     //ИД сети (COM порта) в БД
+                DataType = typeof(int)
+            };
+            dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "cntr_id",     //ИД счетчика в БД
+                DataType = typeof(int)
+            };
+            dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "main_feeder",     //фидер основного канала в счетчике
+                DataType = typeof(int)
+            };
+            dbOblik.Columns.Add(column);
+        }       
+        static private void GetCounters()                   //Получение списка счетчиков из БД
+        {
+            FbDataReader reader;
+            FbCommand cmd;
+            string sql;
+            //Получение списка счетчиков
+            sql = "SELECT * FROM OBLIK";
+            cmd = new FbCommand(sql, con);
+            reader = cmd.ExecuteReader();
+            if (reader.HasRows)
+            {
+                while (reader.Read())
+                {
+                    DataRow row = dbOblik.NewRow();
+                    row["addr"] = reader["ADDRESS"];
+                    row["net_key"] = reader["KEY_NETWORK"];
+                    row["cntr_id"] = reader["KEY_COUNTER"];
+                    dbOblik.Rows.Add(row);
+                }
+            }
+            reader.Close();
+                //Получение портов
+            foreach (DataRow row in dbOblik.Rows)
+            {
+                sql = "SELECT COM_PORT FROM NETWORKS WHERE KEY_NETWORK=@net";
+                cmd = new FbCommand(sql, con);
+                FbParameter pNet = new FbParameter("@net", (int)row["net_key"]);
+                cmd.Parameters.Add(pNet);
+                reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        row["port"] = reader.GetValue(0);
+                    }
+                }
+                reader.Close();
+                //Получение названий счетчиков
+                sql = "SELECT " +
+                        "FIDERS.NAME_FIDER " +
+                        "FROM FIDERS,CHANNELS,CHANNELS_FIDERS " +
+                        "WHERE " +
+                        "(" +
+                            "(FIDERS.KEY_FIDER = CHANNELS_FIDERS.KEY_FIDER) " +
+                            "AND (CHANNELS_FIDERS.KEY_CHANNEL = CHANNELS.KEY_CHANNEL) " +
+                            "AND (CHANNELS.CHANNEL_TYPE = 0) " +
+                            "AND (CHANNELS.CHANNEL_NUM = 1) " +
+                            "AND (CHANNELS.KEY_COUNTER = @cntr)" +
+                        ")";
+                cmd = new FbCommand(sql, con);
+                FbParameter cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
+                cmd.Parameters.Add(cntr);
+                reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        row["name"] = reader.GetValue(0);
+                    }
+                }
+                //Получение номера основного фидера
+                sql = "SELECT " +
+                    "CHANNELS.KEY_CHANNEL " +
+                    "FROM CHANNELS " +
+                    "WHERE " +
+                    "(" +
+                    "(CHANNELS.KEY_COUNTER = @cntr) " +
+                    "AND (CHANNELS.CHANNEL_NUM = 1) " +
+                    "AND ((CHANNELS.CHANNEL_TYPE = 0)" +
+                    ")";
+                cmd = new FbCommand(sql, con);
+                cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
+                cmd.Parameters.Add(cntr);
+                reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        row["main_feeder"] = reader.GetValue(0);
+                    }
+                }
+            }
         }
         
     } 

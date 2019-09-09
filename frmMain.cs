@@ -13,23 +13,22 @@ namespace OblikCleaner
 
     {
         //Инициализация базовых структур
-        Counters counters = new Counters();                                                 //Инициализация списка счетчиков
-        ServiceController odcs = new ServiceController("OasysDataCollectionService");       //Управление службой опроса
-        ServiceController omms = new ServiceController("OasysMetersMonitoringService");     //Управление службой мониторинга
         delegate void MyAction(int index);
 
         public frmMain()
         {
             InitializeComponent();
+            Counters.Initialize();  //Инициализация списка счетчиков
             SetSettings();          //Применение настроек к форме
             CreareDataTable();      //Отображение таблицы счетчиков
+            OblikDB.Initialize();   //Инициализация БД Облик
         }
 
         //Методы пользователя
         private void MassAction(MyAction action)                                              //Массовая операция над выделенными строками
         {
             bool MassSel = false;
-            for (int i = 0; i < counters.tblCounters.Rows.Count; i++)
+            for (int i = 0; i < Counters.tblCounters.Rows.Count; i++)
             {
                 if (dgCounters.Rows[i].Cells["sel"].Value != null && (bool)dgCounters.Rows[i].Cells["sel"].Value == true)
                 {
@@ -46,32 +45,29 @@ namespace OblikCleaner
         private void MassDelete()                                                               //Удаление выбранных записей
         {
             bool MassSel = false;
-            for (int i = counters.tblCounters.Rows.Count - 1; i >= 0; i--)
+            for (int i = Counters.tblCounters.Rows.Count - 1; i >= 0; i--)
             {
                 if (dgCounters.Rows[i].Cells["sel"].Value != null && (bool)dgCounters.Rows[i].Cells["sel"].Value == true)
                 {
                     MassSel = true;
-                    counters.tblCounters.Rows.RemoveAt(i);
+                    Counters.tblCounters.Rows.RemoveAt(i);
                 }
             }
             if (!MassSel)
             {
                 int i = dgCounters.CurrentCell.RowIndex;
-                counters.tblCounters.Rows.RemoveAt(i);
+                Counters.tblCounters.Rows.RemoveAt(i);
             }
         }
         private void SetSettings()                                                              // Начальные настройки формы
         {
             Settings.GetSettings();
-            numRepeats.Value = Settings.repeats;
-            numTimeout.Value = Settings.timeout;
             chkSaveLogs.Checked = Settings.SaveLogs;
-            chkService.Checked = Settings.StopService;
         }
         private void CreareDataTable()                                                          //Настройка отображения таблицы счетчиков
         {
             //Создание столбцов отображаемой таблицы
-            dgCounters.DataSource = counters.tblCounters;
+            dgCounters.DataSource = Counters.tblCounters;
             dgCounters.SelectionMode = DataGridViewSelectionMode.FullRowSelect; //Выбирать сразу всю строку
             dgCounters.MultiSelect = false;                                     //Запретить выбор нескольких строк
             dgCounters.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;  //Выравнивание заголовков по центру
@@ -103,84 +99,95 @@ namespace OblikCleaner
             LogLine("Попытка остановки служб Облик");
             LogLine("-----------------------------");
             LogLine("Остановка службы автоматического опроса");
-            try
+            using (ServiceController odcs = new ServiceController("OasysDataCollectionService"))
             {
-                if (odcs.Status == ServiceControllerStatus.Stopped)
+                try
                 {
-                    LogLine("Служба не требует остановки");
+                    if (odcs.Status == ServiceControllerStatus.Stopped)
+                    {
+                        LogLine("Служба не требует остановки");
+                    }
+                    else
+                    {
+                        odcs.Stop();
+                        LogLine("Служба остановлена успешно");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    odcs.Stop();
-                    LogLine("Служба остановлена успешно");
+                    LogLine("Ошибка остановки службы: " + e.Message);
                 }
-            }
-            catch (Exception e)
-            {
-                LogLine("Ошибка остановки службы: " + e.Message);
             }
             log.Items.Add("");
-
             LogLine("Остановка службы мониторинга");
-            try
+            using (ServiceController omms = new ServiceController("OasysMetersMonitoringService"))
             {
-                if (omms.Status == ServiceControllerStatus.Stopped)
+                try
                 {
-                    LogLine("Служба не требует остановки");
+                    if (omms.Status == ServiceControllerStatus.Stopped)
+                    {
+                        LogLine("Служба не требует остановки");
+                    }
+                    else
+                    {
+                        omms.Stop();
+                        LogLine("Служба остановлена успешно");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    omms.Stop();
-                    LogLine("Служба остановлена успешно");
+                    LogLine("Ошибка остановки службы: " + e.Message);
                 }
             }
-            catch (Exception e)
-            {
-                LogLine("Ошибка остановки службы: " + e.Message);
-            }
+
             LogLine("-----------------------------");
         }
         private void StartOblikServices()                                                       //Запуск служб ОБЛИК
-        {
+        {       
             LogLine("Попытка запуска служб Облик");
             LogLine("-----------------------------");
             LogLine("Запуск службы автоматического опроса");
-            try
+            using (ServiceController odcs = new ServiceController("OasysDataCollectionService"))
             {
-                if (odcs.Status == ServiceControllerStatus.Running)
+                try
                 {
-                    LogLine("Служба уже запущена");
+                    if (odcs.Status == ServiceControllerStatus.Running)
+                    {
+                        LogLine("Служба уже запущена");
+                    }
+                    else
+                    {
+                        odcs.Start();
+                        LogLine("Служба запущена успешно");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    odcs.Start();
-                    LogLine("Служба запущена успешно");
+                    LogLine("Ошибка запуска службы: " + e.Message);
                 }
-            }
-            catch (Exception e)
-            {
-                LogLine("Ошибка запуска службы: " + e.Message);
             }
             LogLine("");
-
             log.Items.Add(System.DateTime.Now.ToString() + " : " + "Запуск службы мониторинга");
-            try
+            using (ServiceController omms = new ServiceController("OasysMetersMonitoringService"))
             {
-                if (omms.Status == ServiceControllerStatus.Running)
+                try
                 {
-                    LogLine("Служба уже запущена");
+                    if (omms.Status == ServiceControllerStatus.Running)
+                    {
+                        LogLine("Служба уже запущена");
+                    }
+                    else
+                    {
+                        omms.Start();
+                        LogLine("Служба запущена успешно");
+                    }
                 }
-                else
+                catch (Exception e)
                 {
-                    omms.Start();
-                    LogLine("Служба запущена успешно");
+                    LogLine("Ошибка запуска службы: " + e.Message);
                 }
             }
-            catch (Exception e)
-            {
-                LogLine("Ошибка запуска службы: " + e.Message);
-            }
-            LogLine("-----------------------------"); ;
+            LogLine("-----------------------------");
         }
         private void GetDGRecs(int index)                                                       //Получение заполнения суточного графика
         {
@@ -190,50 +197,52 @@ namespace OblikCleaner
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
             lstr = String.Format("Получение данных со счетчика COM{0}, адрес:{1:X2}", port, addr);
             LogLine(lstr);
-            Oblik oblik = new Oblik(port, addr);
-            result = oblik.GetDayGraphRecs();
-            if (!oblik.isError)
+            using (Oblik oblik = new Oblik(port, addr))
             {
-                LogLine("Данные получены успешно");
-                dgCounters.Rows[index].Cells["dg_recs"].Value = result;
-                dgCounters.Refresh();
+                result = oblik.GetDayGraphRecs();
+                if (!oblik.isError)
+                {
+                    LogLine("Данные получены успешно");
+                    dgCounters.Rows[index].Cells["dg_recs"].Value = result;
+                    dgCounters.Refresh();
+                }
+                else
+                {
+                    LogLine("Ошибка: " + oblik.ErrorMsg);
+                    dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
+                    dgCounters.Refresh();
+                }
             }
-            else
-            {
-                LogLine("Ошибка: " + oblik.ErrorMsg);
-                dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
-                dgCounters.Refresh();
-            }
-            oblik.Dispose();
         }
         private void CleanDGRecs(int index)                                                     //Очистка суточного графика + установка текущего времени
         {
             int port = (int)dgCounters.Rows[index].Cells["port"].Value;
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
             LogLine(String.Format("Очистка суточного графика счетчика COM{0}, адрес:{1:X2}", port, addr));
-            Oblik oblik = new Oblik(port, addr);
-            oblik.CleanDayGraph();      //Очистка суточного графика
-            if (!oblik.isError)
+            using (Oblik oblik = new Oblik(port, addr))
             {
-                LogLine("Суточный график очищен");
-                GetDGRecs(index);
+                oblik.CleanDayGraph();      //Очистка суточного графика
+                if (!oblik.isError)
+                {
+                    LogLine("Суточный график очищен");
+                    GetDGRecs(index);
+                }
+                else
+                {
+                    LogLine("Ошибка: " + oblik.ErrorMsg);
+                    dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
+                }
+                LogLine(String.Format("Установка текущего времени счетчика COM{0}, адрес:{1:X2}", port, addr));
+                oblik.SetCurrentTime();     //Установка текущего времени
+                if (!oblik.isError)
+                {
+                    LogLine("Текущее время установлено");
+                }
+                else
+                {
+                    LogLine("Ошибка: " + oblik.ErrorMsg);
+                }
             }
-            else
-            {
-                LogLine("Ошибка: " + oblik.ErrorMsg);
-                dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
-            }
-            LogLine(String.Format("Установка текущего времени счетчика COM{0}, адрес:{1:X2}", port, addr));
-            oblik.SetCurrentTime();     //Установка текущего времени
-            if (!oblik.isError)
-            {
-                LogLine("Текущее время установлено");
-            }
-            else
-            {
-                LogLine("Ошибка: " + oblik.ErrorMsg);
-            }
-            oblik.Dispose();
             dgCounters.Refresh();
         }
         private void LogLine(string rec)                                                        //Лог событий
@@ -262,14 +271,24 @@ namespace OblikCleaner
         }
         private void GetOblikCounters()                                                         //Получить список счетчиков из БД Облик
         {
-
+            OblikDB.GetList();
+            LogLine(OblikDB.ErrorMsg);
+            if (!OblikDB.isError)
+            {
+                foreach (DataRow dbr in OblikDB.dbOblik.Rows)
+                {
+                    DataRow cr = Counters.tblCounters.NewRow();
+                    cr["port"] = dbr["port"];
+                    cr["addr"] = dbr["addr"];
+                    cr["name"] = dbr["name"];
+                    Counters.tblCounters.Rows.Add(cr);
+                }
+                dgCounters.Refresh();
+            }
         }
-
         //Обработчики событий элементов формы
-        private void NumTimeout_ValueChanged(object sender, EventArgs e) => Settings.timeout = (int)numTimeout.Value;
-        private void NumRepeats_ValueChanged(object sender, EventArgs e) => Settings.repeats = (int)numRepeats.Value;
-        private void FrmMain_FormClosed(object sender, FormClosedEventArgs e) => counters.SaveData();
-        private void CmAdd_Click(object sender, EventArgs e) => counters.tblCounters.Rows.Add();
+        private void FrmMain_FormClosed(object sender, FormClosedEventArgs e) => Counters.SaveData();
+        private void CmAdd_Click(object sender, EventArgs e) => Counters.tblCounters.Rows.Add();
         private void CmDel_Click(object sender, EventArgs e)                            //Удаление выбранных счетчиков
         {
             DialogResult dialogResult = MessageBox.Show("Удалить выбранные записи?", "Подтверждение", MessageBoxButtons.OKCancel);
@@ -300,11 +319,10 @@ namespace OblikCleaner
                 row.Cells["sel"].Value = 0;
             }
         }
-        private void BtnSave_Click(object sender, EventArgs e) => counters.SaveData();
+        private void BtnSave_Click(object sender, EventArgs e) => Counters.SaveData();
         private void ChkSaveLogs_CheckedChanged(object sender, EventArgs e) => Settings.SaveLogs = chkSaveLogs.Checked;
-        private void ChkService_CheckedChanged(object sender, EventArgs e) => Settings.StopService = chkService.Checked;
-        private void BtnAdd_Click(object sender, EventArgs e) => counters.tblCounters.Rows.Add();
-        private void DgCounters_CellValueChanged(object sender, DataGridViewCellEventArgs e) => counters.SaveData();
+        private void BtnAdd_Click(object sender, EventArgs e) => Counters.tblCounters.Rows.Add();
+        private void DgCounters_CellValueChanged(object sender, DataGridViewCellEventArgs e) => Counters.SaveData();
         private void BtnCleanLog_Click(object sender, EventArgs e) => log.Items.Clear();
         private void BtnSvcStop_Click(object sender, EventArgs e) => StopOblikServices();
         private void BtnGetdata_Click(object sender, EventArgs e)
@@ -332,26 +350,12 @@ namespace OblikCleaner
         }
         private void BtnSetBD_Click(object sender, EventArgs e)
         {
-            frmSetDB frmSetDB = new frmSetDB();
-            frmSetDB.Show();
+            frmSettings frmSettings = new frmSettings();
+            frmSettings.Show();
         }
-
         private void BtnGetDB_Click(object sender, EventArgs e)
         {
-            OblikDB.GetList();
-            LogLine(OblikDB.ErrorMsg);
-            if (!OblikDB.isError)
-            {
-                foreach (DataRow dbr in OblikDB.dbOblik.Rows)
-                {
-                    DataRow cr = counters.tblCounters.NewRow();
-                    cr["port"] = dbr["port"];
-                    cr["addr"] = dbr["addr"];
-                    cr["name"] = dbr["name"];
-                    counters.tblCounters.Rows.Add(cr);
-                }
-                dgCounters.Refresh();
-            }
+            GetOblikCounters();
         }
     }
 }

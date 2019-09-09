@@ -39,34 +39,25 @@
             this.toolStripSeparator1 = new System.Windows.Forms.ToolStripSeparator();
             this.cmAdd = new System.Windows.Forms.ToolStripMenuItem();
             this.cmDel = new System.Windows.Forms.ToolStripMenuItem();
-            this.label1 = new System.Windows.Forms.Label();
-            this.numTimeout = new System.Windows.Forms.NumericUpDown();
-            this.label2 = new System.Windows.Forms.Label();
-            this.numRepeats = new System.Windows.Forms.NumericUpDown();
             this.btnDel = new System.Windows.Forms.Button();
             this.btnSave = new System.Windows.Forms.Button();
             this.btnAdd = new System.Windows.Forms.Button();
             this.btnGetdata = new System.Windows.Forms.Button();
             this.btnDelDG = new System.Windows.Forms.Button();
             this.log = new System.Windows.Forms.ListBox();
-            this.chkService = new System.Windows.Forms.CheckBox();
             this.groupBox1 = new System.Windows.Forms.GroupBox();
             this.btnGetDB = new System.Windows.Forms.Button();
             this.groupBox2 = new System.Windows.Forms.GroupBox();
             this.btnSvcStart = new System.Windows.Forms.Button();
             this.btnSvcStop = new System.Windows.Forms.Button();
-            this.groupBox3 = new System.Windows.Forms.GroupBox();
-            this.btnSetBD = new System.Windows.Forms.Button();
+            this.btnSettings = new System.Windows.Forms.Button();
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.btnCleanLog = new System.Windows.Forms.Button();
             this.chkSaveLogs = new System.Windows.Forms.CheckBox();
             ((System.ComponentModel.ISupportInitialize)(this.dgCounters)).BeginInit();
             this.cmCounters.SuspendLayout();
-            ((System.ComponentModel.ISupportInitialize)(this.numTimeout)).BeginInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRepeats)).BeginInit();
             this.groupBox1.SuspendLayout();
             this.groupBox2.SuspendLayout();
-            this.groupBox3.SuspendLayout();
             this.groupBox4.SuspendLayout();
             this.SuspendLayout();
             // 
@@ -96,101 +87,52 @@
             this.cmAdd,
             this.cmDel});
             this.cmCounters.Name = "cmCounters";
-            this.cmCounters.Size = new System.Drawing.Size(188, 126);
+            this.cmCounters.Size = new System.Drawing.Size(181, 126);
             // 
             // cmGetData
             // 
             this.cmGetData.Name = "cmGetData";
-            this.cmGetData.Size = new System.Drawing.Size(187, 22);
+            this.cmGetData.Size = new System.Drawing.Size(180, 22);
             this.cmGetData.Text = "Получить данные";
             this.cmGetData.Click += new System.EventHandler(this.CmGetData_Click);
             // 
             // toolStripSeparator2
             // 
             this.toolStripSeparator2.Name = "toolStripSeparator2";
-            this.toolStripSeparator2.Size = new System.Drawing.Size(184, 6);
+            this.toolStripSeparator2.Size = new System.Drawing.Size(177, 6);
             // 
             // cmSelAll
             // 
             this.cmSelAll.Name = "cmSelAll";
-            this.cmSelAll.Size = new System.Drawing.Size(187, 22);
+            this.cmSelAll.Size = new System.Drawing.Size(180, 22);
             this.cmSelAll.Text = "Выделить все";
             this.cmSelAll.Click += new System.EventHandler(this.CmSelAll_Click);
             // 
             // cmSelNone
             // 
             this.cmSelNone.Name = "cmSelNone";
-            this.cmSelNone.Size = new System.Drawing.Size(187, 22);
+            this.cmSelNone.Size = new System.Drawing.Size(180, 22);
             this.cmSelNone.Text = "Снять выделение";
             this.cmSelNone.Click += new System.EventHandler(this.CmSelNone_Click);
             // 
             // toolStripSeparator1
             // 
             this.toolStripSeparator1.Name = "toolStripSeparator1";
-            this.toolStripSeparator1.Size = new System.Drawing.Size(184, 6);
+            this.toolStripSeparator1.Size = new System.Drawing.Size(177, 6);
             // 
             // cmAdd
             // 
             this.cmAdd.Name = "cmAdd";
-            this.cmAdd.Size = new System.Drawing.Size(187, 22);
+            this.cmAdd.Size = new System.Drawing.Size(180, 22);
             this.cmAdd.Text = "Добавить счетчик";
             this.cmAdd.Click += new System.EventHandler(this.CmAdd_Click);
             // 
             // cmDel
             // 
             this.cmDel.Name = "cmDel";
-            this.cmDel.Size = new System.Drawing.Size(187, 22);
+            this.cmDel.Size = new System.Drawing.Size(180, 22);
             this.cmDel.Text = "Удалить счетчик(и)";
             this.cmDel.Click += new System.EventHandler(this.CmDel_Click);
-            // 
-            // label1
-            // 
-            this.label1.AutoSize = true;
-            this.label1.Location = new System.Drawing.Point(6, 24);
-            this.label1.Name = "label1";
-            this.label1.Size = new System.Drawing.Size(73, 13);
-            this.label1.TabIndex = 1;
-            this.label1.Text = "Таймаут, мс:";
-            // 
-            // numTimeout
-            // 
-            this.numTimeout.Location = new System.Drawing.Point(85, 22);
-            this.numTimeout.Maximum = new decimal(new int[] {
-            10000,
-            0,
-            0,
-            0});
-            this.numTimeout.Name = "numTimeout";
-            this.numTimeout.Size = new System.Drawing.Size(80, 20);
-            this.numTimeout.TabIndex = 2;
-            this.numTimeout.Value = new decimal(new int[] {
-            2000,
-            0,
-            0,
-            0});
-            this.numTimeout.ValueChanged += new System.EventHandler(this.NumTimeout_ValueChanged);
-            // 
-            // label2
-            // 
-            this.label2.AutoSize = true;
-            this.label2.Location = new System.Drawing.Point(6, 53);
-            this.label2.Name = "label2";
-            this.label2.Size = new System.Drawing.Size(55, 13);
-            this.label2.TabIndex = 3;
-            this.label2.Text = "Повторы:";
-            // 
-            // numRepeats
-            // 
-            this.numRepeats.Location = new System.Drawing.Point(85, 51);
-            this.numRepeats.Name = "numRepeats";
-            this.numRepeats.Size = new System.Drawing.Size(80, 20);
-            this.numRepeats.TabIndex = 4;
-            this.numRepeats.Value = new decimal(new int[] {
-            2,
-            0,
-            0,
-            0});
-            this.numRepeats.ValueChanged += new System.EventHandler(this.NumRepeats_ValueChanged);
             // 
             // btnDel
             // 
@@ -250,19 +192,6 @@
             this.log.Size = new System.Drawing.Size(605, 95);
             this.log.TabIndex = 13;
             // 
-            // chkService
-            // 
-            this.chkService.AutoSize = true;
-            this.chkService.Checked = true;
-            this.chkService.CheckState = System.Windows.Forms.CheckState.Checked;
-            this.chkService.Location = new System.Drawing.Point(9, 81);
-            this.chkService.Name = "chkService";
-            this.chkService.Size = new System.Drawing.Size(191, 17);
-            this.chkService.TabIndex = 14;
-            this.chkService.Text = "Останавливать службы \"Облик\"";
-            this.chkService.UseVisualStyleBackColor = true;
-            this.chkService.CheckedChanged += new System.EventHandler(this.ChkService_CheckedChanged);
-            // 
             // groupBox1
             // 
             this.groupBox1.Controls.Add(this.btnGetDB);
@@ -318,30 +247,15 @@
             this.btnSvcStop.UseVisualStyleBackColor = true;
             this.btnSvcStop.Click += new System.EventHandler(this.BtnSvcStop_Click);
             // 
-            // groupBox3
+            // btnSettings
             // 
-            this.groupBox3.Controls.Add(this.btnSetBD);
-            this.groupBox3.Controls.Add(this.label1);
-            this.groupBox3.Controls.Add(this.numTimeout);
-            this.groupBox3.Controls.Add(this.numRepeats);
-            this.groupBox3.Controls.Add(this.chkService);
-            this.groupBox3.Controls.Add(this.label2);
-            this.groupBox3.Location = new System.Drawing.Point(423, 356);
-            this.groupBox3.Name = "groupBox3";
-            this.groupBox3.Size = new System.Drawing.Size(206, 137);
-            this.groupBox3.TabIndex = 17;
-            this.groupBox3.TabStop = false;
-            this.groupBox3.Text = "Настройки";
-            // 
-            // btnSetBD
-            // 
-            this.btnSetBD.Location = new System.Drawing.Point(9, 104);
-            this.btnSetBD.Name = "btnSetBD";
-            this.btnSetBD.Size = new System.Drawing.Size(125, 23);
-            this.btnSetBD.TabIndex = 19;
-            this.btnSetBD.Text = "Настройка БД Облик";
-            this.btnSetBD.UseVisualStyleBackColor = true;
-            this.btnSetBD.Click += new System.EventHandler(this.BtnSetBD_Click);
+            this.btnSettings.Location = new System.Drawing.Point(504, 375);
+            this.btnSettings.Name = "btnSettings";
+            this.btnSettings.Size = new System.Drawing.Size(125, 23);
+            this.btnSettings.TabIndex = 19;
+            this.btnSettings.Text = "Настройки";
+            this.btnSettings.UseVisualStyleBackColor = true;
+            this.btnSettings.Click += new System.EventHandler(this.BtnSetBD_Click);
             // 
             // groupBox4
             // 
@@ -381,8 +295,8 @@
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
             this.AutoScaleMode = System.Windows.Forms.AutoScaleMode.Font;
             this.ClientSize = new System.Drawing.Size(645, 653);
+            this.Controls.Add(this.btnSettings);
             this.Controls.Add(this.groupBox4);
-            this.Controls.Add(this.groupBox3);
             this.Controls.Add(this.groupBox2);
             this.Controls.Add(this.groupBox1);
             this.Controls.Add(this.dgCounters);
@@ -394,12 +308,8 @@
             this.FormClosed += new System.Windows.Forms.FormClosedEventHandler(this.FrmMain_FormClosed);
             ((System.ComponentModel.ISupportInitialize)(this.dgCounters)).EndInit();
             this.cmCounters.ResumeLayout(false);
-            ((System.ComponentModel.ISupportInitialize)(this.numTimeout)).EndInit();
-            ((System.ComponentModel.ISupportInitialize)(this.numRepeats)).EndInit();
             this.groupBox1.ResumeLayout(false);
             this.groupBox2.ResumeLayout(false);
-            this.groupBox3.ResumeLayout(false);
-            this.groupBox3.PerformLayout();
             this.groupBox4.ResumeLayout(false);
             this.groupBox4.PerformLayout();
             this.ResumeLayout(false);
@@ -408,8 +318,6 @@
 
         #endregion
         private System.Windows.Forms.DataGridView dgCounters;
-        private System.Windows.Forms.Label label1;
-        private System.Windows.Forms.NumericUpDown numTimeout;
         private System.Windows.Forms.ContextMenuStrip cmCounters;
         private System.Windows.Forms.ToolStripMenuItem cmGetData;
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator2;
@@ -418,25 +326,21 @@
         private System.Windows.Forms.ToolStripSeparator toolStripSeparator1;
         private System.Windows.Forms.ToolStripMenuItem cmAdd;
         private System.Windows.Forms.ToolStripMenuItem cmDel;
-        private System.Windows.Forms.Label label2;
-        private System.Windows.Forms.NumericUpDown numRepeats;
         private System.Windows.Forms.Button btnDel;
         private System.Windows.Forms.Button btnSave;
         private System.Windows.Forms.Button btnAdd;
         private System.Windows.Forms.Button btnGetdata;
         private System.Windows.Forms.Button btnDelDG;
         private System.Windows.Forms.ListBox log;
-        private System.Windows.Forms.CheckBox chkService;
         private System.Windows.Forms.GroupBox groupBox1;
         private System.Windows.Forms.GroupBox groupBox2;
-        private System.Windows.Forms.GroupBox groupBox3;
         private System.Windows.Forms.GroupBox groupBox4;
         private System.Windows.Forms.CheckBox chkSaveLogs;
         private System.Windows.Forms.Button btnCleanLog;
         private System.Windows.Forms.Button btnSvcStart;
         private System.Windows.Forms.Button btnSvcStop;
         private System.Windows.Forms.Button btnGetDB;
-        private System.Windows.Forms.Button btnSetBD;
+        private System.Windows.Forms.Button btnSettings;
     }
 }
 

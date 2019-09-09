@@ -10,7 +10,6 @@ namespace Obliks
 
         //Локальные переменные
         private bool disposed = false;          //Флаг деструктора
-        private SerialPort com;                 //обьявление COM порта
         private int _port;                      //порт счетчика
         private int _addr;                      //адрес счетчика
         private int _baudrate;                  //скорость работы порта, 9600 бод - по умолчанию
@@ -110,7 +109,7 @@ namespace Obliks
                 if (disposing)
                 {
                     // Dispose managed resources.
-                    com.Dispose();
+
                 }
                 // Dispose unmanaged resources.
                 _rbuf = null;
@@ -340,80 +339,80 @@ namespace Obliks
             return res;
         }
 
-        // Событие чтения данных из порта
-        void DataReciever(object s, SerialDataReceivedEventArgs ea)
-        {
-            _rbuf = new byte[com.BytesToRead];
-            com.Read(_rbuf, 0, _rbuf.Length);
-            lock (SerialIncoming)
-            {
-                Monitor.Pulse(SerialIncoming);
-            }
-        }
+
 
         //Отправка запроса и получение данных WData - запрос, _rbuf - ответ
         void RSExchange(byte[] WData)
         {
             _isError = false;
             _error_txt = "";
-            try
+            //Параметризация и открытие порта
+            using (SerialPort com = new SerialPort
             {
-                //Параметризация и открытие порта
-                com = new SerialPort
+                PortName = "COM" + _port,
+                BaudRate = _baudrate,
+                Parity = Parity.None,
+                DataBits = 8,
+                StopBits = StopBits.One,
+                ReadTimeout = _timeout,
+                WriteTimeout = _timeout,
+                DtrEnable = false,
+                RtsEnable = false,
+                Handshake = Handshake.None
+            })
+            {
+                // Событие чтения данных из порта
+                void DataReciever(object s, SerialDataReceivedEventArgs ea)
                 {
-                    PortName = "COM" + _port,
-                    BaudRate = _baudrate,
-                    Parity = Parity.None,
-                    DataBits = 8,
-                    StopBits = StopBits.One,
-                    ReadTimeout = _timeout,
-                    WriteTimeout = _timeout,
-                    DtrEnable = false,
-                    RtsEnable = false,
-                    Handshake = Handshake.None
-                };
-                if (com.IsOpen) { com.Close(); }    //закрыть ранее открытый порт
-                com.Open();
-
-                //Отправка данных
-                com.DiscardOutBuffer();                                                                 //очистка буфера передачи
-                com.DataReceived += new SerialDataReceivedEventHandler(DataReciever);                   //событие чтения из порта
-                com.Write(WData, 0, WData.Length);                                                      //отправка буфера записи
-                com.DiscardInBuffer();                                                                  //очистка буфера приема
-
-                //Получение ответа
-                int r = _repeats;
-                while (r > 0)   //Повтор при ошибке
-                {
+                    _rbuf = new byte[com.BytesToRead];
+                    com.Read(_rbuf, 0, _rbuf.Length);
                     lock (SerialIncoming)
                     {
-                        if (!Monitor.Wait(SerialIncoming, _timeout))
-                        {
-                            //Если таймаут
-                            _isError = true;
-                            _error_txt = "Timeout";
-                            r--;
-                        }
-                        else
-                        {
-                            r = 0;
-                            _isError = false;
-                            _error_txt = "";
-                        }
+                        Monitor.Pulse(SerialIncoming);
                     }
                 }
-                com.Close();        //Закрыть порт
-            }
-            catch (Exception e)
-            {
-                _isError = true;
-                _error_txt = e.Message;
-            }
-            finally
-            {
-                WData = null;
+                try
+                {
+                    if (com.IsOpen) { com.Close(); }    //закрыть ранее открытый порт
+                    com.Open();
+                    //Отправка данных
+                    com.DiscardOutBuffer();                                                                 //очистка буфера передачи
+                    com.DataReceived += new SerialDataReceivedEventHandler(DataReciever);                   //событие чтения из порта
+                    com.Write(WData, 0, WData.Length);                                                      //отправка буфера записи
+                    com.DiscardInBuffer();                                                                  //очистка буфера приема
+                    //Получение ответа
+                    int r = _repeats;
+                    while (r > 0)   //Повтор при ошибке
+                    {
+                        lock (SerialIncoming)
+                        {
+                            if (!Monitor.Wait(SerialIncoming, _timeout))
+                            {
+                                //Если таймаут
+                                _isError = true;
+                                _error_txt = "Timeout";
+                                r--;
+                            }
+                            else
+                            {
+                                r = 0;
+                                _isError = false;
+                                _error_txt = "";
+                            }
+                        }
+                    }
+                    com.Close();        //Закрыть порт
+                }
+                catch (Exception e)
+                {
+                    _isError = true;
+                    _error_txt = e.Message;
+                }
+                finally
+                {
+                    WData = null;
+                }
             }
         }
-
     }
 }

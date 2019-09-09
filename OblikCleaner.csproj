@@ -96,27 +96,27 @@
   <ItemGroup>
     <Compile Include="Counters.cs" />
     <Compile Include="DataBase.cs" />
-    <Compile Include="FormMain.cs">
+    <Compile Include="frmMain.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="FormMain.Designer.cs">
-      <DependentUpon>FormMain.cs</DependentUpon>
+    <Compile Include="frmMain.Designer.cs">
+      <DependentUpon>frmMain.cs</DependentUpon>
     </Compile>
-    <Compile Include="frmSetDB.cs">
+    <Compile Include="frmSettings.cs">
       <SubType>Form</SubType>
     </Compile>
-    <Compile Include="frmSetDB.Designer.cs">
-      <DependentUpon>frmSetDB.cs</DependentUpon>
+    <Compile Include="frmSettings.Designer.cs">
+      <DependentUpon>frmSettings.cs</DependentUpon>
     </Compile>
     <Compile Include="oblik.cs" />
     <Compile Include="Program.cs" />
     <Compile Include="Properties\AssemblyInfo.cs" />
     <Compile Include="Settings.cs" />
-    <EmbeddedResource Include="FormMain.resx">
-      <DependentUpon>FormMain.cs</DependentUpon>
+    <EmbeddedResource Include="frmMain.resx">
+      <DependentUpon>frmMain.cs</DependentUpon>
     </EmbeddedResource>
-    <EmbeddedResource Include="frmSetDB.resx">
-      <DependentUpon>frmSetDB.cs</DependentUpon>
+    <EmbeddedResource Include="frmSettings.resx">
+      <DependentUpon>frmSettings.cs</DependentUpon>
     </EmbeddedResource>
     <EmbeddedResource Include="Properties\Resources.resx">
       <Generator>ResXFileCodeGenerator</Generator>
