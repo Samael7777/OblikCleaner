@@ -260,7 +260,7 @@ namespace Obliks
             DateTime _curtime, _btime;
             byte[] _tbuf = new byte[4]; //Буфер для передачи счетчику
             _btime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);       //Базовая точка времени 01.01.1970 00:00 GMT
-            _curtime = System.DateTime.Now;                                     //Текущее время
+            _curtime = System.DateTime.Now.ToUniversalTime();                   //Текущее время
             _ctime = (UInt32)(_curtime - _btime).TotalSeconds + 2;              //2 секунды на вычисление, отправку и т.д.
             _tbuf[0] = (byte)((_ctime >> 24) & 0xff);
             _tbuf[1] = (byte)((_ctime >> 16) & 0xff);
@@ -349,7 +349,6 @@ namespace Obliks
             {
                 Monitor.Pulse(SerialIncoming);
             }
-
         }
 
         //Отправка запроса и получение данных WData - запрос, _rbuf - ответ
