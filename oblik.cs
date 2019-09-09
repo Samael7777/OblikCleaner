@@ -9,18 +9,18 @@ namespace Obliks
     {
 
         //Локальные переменные
-        bool disposed = false;          //Флаг деструктора
-        SerialPort com;                 //обьявление COM порта
-        int _port;                      //порт счетчика
-        int _addr;                      //адрес счетчика
-        int _baudrate;                  //скорость работы порта, 9600 бод - по умолчанию
-        int _timeout, _repeats;         //таймаут и повторы
-        byte[] _passwd;                 //пароль
-        byte[] _rbuf;                   //Буфер для чтения
-        bool _isError;                  //Наличие ошибки
-        string _error_txt = "";         //текст ошибки
-        byte _user;                     //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
-        object SerialIncoming;          //Монитор таймаута чтения порта
+        private bool disposed = false;          //Флаг деструктора
+        private SerialPort com;                 //обьявление COM порта
+        private int _port;                      //порт счетчика
+        private int _addr;                      //адрес счетчика
+        private int _baudrate;                  //скорость работы порта, 9600 бод - по умолчанию
+        private int _timeout, _repeats;         //таймаут и повторы
+        private byte[] _passwd;                 //пароль
+        private byte[] _rbuf;                   //Буфер для чтения
+        private bool _isError;                  //Наличие ошибки
+        private string _error_txt = "";         //текст ошибки
+        private byte _user;                     //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
+        private object SerialIncoming;          //Монитор таймаута чтения порта
 
         //Интерфейс класса
 
@@ -359,17 +359,19 @@ namespace Obliks
             try
             {
                 //Параметризация и открытие порта
-                com = new SerialPort();
-                com.PortName = "COM" + _port;
-                com.BaudRate = _baudrate;
-                com.Parity = Parity.None;
-                com.DataBits = 8;
-                com.StopBits = StopBits.One;
-                com.ReadTimeout = _timeout;
-                com.WriteTimeout = _timeout;
-                com.DtrEnable = false;
-                com.RtsEnable = false;
-                com.Handshake = Handshake.None;
+                com = new SerialPort
+                {
+                    PortName = "COM" + _port,
+                    BaudRate = _baudrate,
+                    Parity = Parity.None,
+                    DataBits = 8,
+                    StopBits = StopBits.One,
+                    ReadTimeout = _timeout,
+                    WriteTimeout = _timeout,
+                    DtrEnable = false,
+                    RtsEnable = false,
+                    Handshake = Handshake.None
+                };
                 if (com.IsOpen) { com.Close(); }    //закрыть ранее открытый порт
                 com.Open();
 
