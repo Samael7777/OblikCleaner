@@ -14,66 +14,18 @@ namespace OblikCleaner
         static public string ErrorMsg;      //Текст ошибки
         static public DataTable dbOblik;    //список счетчиков    
 
-
         public static void Initialize() => CreateTableHeaders();
-
-        static public void GetList()                        //Получить список счетчиков из БД
+        public static void GetList()                        //Получить список счетчиков из БД
         {
             MyAction action = new MyAction(GetCounters);
             Execute(action);
         }
-        static public DateTime GetLastAsk(int port, int addr)
+        public static void GetLastRequest()                 //Получить время последнего опроса счетчиков
         {
-            isError = false;
-            ErrorMsg = "";
-            string filter = string.Format("addr={0} AND port={1}",addr,port);
-            var cntr = dbOblik.Select(filter);
-            int cntr_id = cntr[0].Field<int>("cntr_id");
-            FbConnectionStringBuilder cs = new FbConnectionStringBuilder
-            {
-                DataSource = Settings.DBSrvName,
-                Database = Settings.DBPath,
-                UserID = Settings.DBUser,
-                Password = Settings.DBPasswd,
-                Charset = "NONE",
-                Pooling = false
-            };
-
-            try
-            {
-                using (con = new FbConnection(cs.ToString()))
-                {
-                    con.Open();
-                    FbDataReader reader;
-                    FbCommand cmd;
-                    string sql;
-                    sql = "SELECT " +
-                            "FIDERS.NAME_FIDER " +
-                            "FROM FIDERS,CHANNELS,CHANNELS_FIDERS " +
-                            "WHERE " +
-                            "(" +
-                                "(FIDERS.KEY_FIDER = CHANNELS_FIDERS.KEY_FIDER) " +
-                                "AND (CHANNELS_FIDERS.KEY_CHANNEL = CHANNELS.KEY_CHANNEL) " +
-                                "AND (CHANNELS.CHANNEL_TYPE = 0) " +
-                                "AND (CHANNELS.CHANNEL_NUM = 1) " +
-                                "AND (CHANNELS.KEY_COUNTER = @cntr)" +
-                            ")";
-
-
-
-                    con.Close();
-                }
-
-
-            }
-            catch (Exception e)
-            {
-                isError = true;
-                ErrorMsg = e.Message;
-            }
-
+            MyAction action = new MyAction(GetLastAsk);
+            Execute(action);
         }
-
+        
         static private void Execute(MyAction action)        //Выполнить команду БД 
         {
             isError = false;
@@ -86,9 +38,9 @@ namespace OblikCleaner
                 UserID = Settings.DBUser,
                 Password = Settings.DBPasswd,
                 Charset = "NONE",
-                Pooling = false
+                Pooling = false,
+                Dialect = 1
             };
-
             try
             {
                 using (con = new FbConnection(cs.ToString()))
@@ -152,6 +104,13 @@ namespace OblikCleaner
                 DataType = typeof(int)
             };
             dbOblik.Columns.Add(column);
+
+            column = new DataColumn
+            {
+                ColumnName = "last_rec",        //Дата и время последнего опроса
+                DataType = typeof(DateTime)
+            };
+            dbOblik.Columns.Add(column);
         }       
         static private void GetCounters()                   //Получение списка счетчиков из БД
         {
@@ -213,6 +172,7 @@ namespace OblikCleaner
                         row["name"] = reader.GetValue(0);
                     }
                 }
+                reader.Close();
                 //Получение номера основного фидера
                 sql = "SELECT " +
                     "CHANNELS.KEY_CHANNEL " +
@@ -221,7 +181,7 @@ namespace OblikCleaner
                     "(" +
                     "(CHANNELS.KEY_COUNTER = @cntr) " +
                     "AND (CHANNELS.CHANNEL_NUM = 1) " +
-                    "AND ((CHANNELS.CHANNEL_TYPE = 0)" +
+                    "AND (CHANNELS.CHANNEL_TYPE = 0)" +
                     ")";
                 cmd = new FbCommand(sql, con);
                 cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
@@ -234,8 +194,36 @@ namespace OblikCleaner
                         row["main_feeder"] = reader.GetValue(0);
                     }
                 }
+                reader.Close();
             }
         }
-        
+        static private void GetLastAsk()                    //Получить время последнего опроса счетчиков
+        {
+            FbDataReader reader;
+            FbCommand cmd;
+            string sql;
+            sql = "select " +
+                "day_graph.date_info " +
+                "from day_graph " +
+                "where day_graph.key_val = " +
+                "(select max(day_graph.key_val) " +
+                "from day_graph " +
+                "where day_graph.key_channel = @channel)";
+            foreach (DataRow row in dbOblik.Rows)
+            {
+                cmd = new FbCommand(sql, con);
+                FbParameter cntr = new FbParameter("@channel", (int)row["main_feeder"]);
+                cmd.Parameters.Add(cntr);
+                reader = cmd.ExecuteReader();
+                if (reader.HasRows)
+                {
+                    while (reader.Read())
+                    {
+                        row["last_rec"] = reader.GetValue(0);
+                    }
+                }
+                reader.Close();
+            }
+        }
     } 
 }

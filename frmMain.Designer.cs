@@ -54,6 +54,7 @@
             this.groupBox4 = new System.Windows.Forms.GroupBox();
             this.btnCleanLog = new System.Windows.Forms.Button();
             this.chkSaveLogs = new System.Windows.Forms.CheckBox();
+            this.btnLastAsk = new System.Windows.Forms.Button();
             ((System.ComponentModel.ISupportInitialize)(this.dgCounters)).BeginInit();
             this.cmCounters.SuspendLayout();
             this.groupBox1.SuspendLayout();
@@ -217,6 +218,7 @@
             // 
             // groupBox2
             // 
+            this.groupBox2.Controls.Add(this.btnLastAsk);
             this.groupBox2.Controls.Add(this.btnSvcStart);
             this.groupBox2.Controls.Add(this.btnSvcStop);
             this.groupBox2.Controls.Add(this.btnGetdata);
@@ -290,6 +292,16 @@
             this.chkSaveLogs.UseVisualStyleBackColor = true;
             this.chkSaveLogs.CheckedChanged += new System.EventHandler(this.ChkSaveLogs_CheckedChanged);
             // 
+            // btnLastAsk
+            // 
+            this.btnLastAsk.Location = new System.Drawing.Point(6, 103);
+            this.btnLastAsk.Name = "btnLastAsk";
+            this.btnLastAsk.Size = new System.Drawing.Size(125, 23);
+            this.btnLastAsk.TabIndex = 19;
+            this.btnLastAsk.Text = "Последний опрос";
+            this.btnLastAsk.UseVisualStyleBackColor = true;
+            this.btnLastAsk.Click += new System.EventHandler(this.BtnLastAsk_Click);
+            // 
             // frmMain
             // 
             this.AutoScaleDimensions = new System.Drawing.SizeF(6F, 13F);
@@ -341,6 +353,7 @@
         private System.Windows.Forms.Button btnSvcStop;
         private System.Windows.Forms.Button btnGetDB;
         private System.Windows.Forms.Button btnSettings;
+        private System.Windows.Forms.Button btnLastAsk;
     }
 }
 

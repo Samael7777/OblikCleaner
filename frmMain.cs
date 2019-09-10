@@ -4,7 +4,8 @@ using System.IO;
 using System.ServiceProcess;
 using System.Windows.Forms;
 using System.Data;
-
+using System.Linq;
+using System.Collections.Generic;
 
 namespace OblikCleaner
 {
@@ -87,6 +88,9 @@ namespace OblikCleaner
 
             dgCounters.Columns["sel"].HeaderText = "Выбор";
             dgCounters.Columns["sel"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
+
+            dgCounters.Columns["last_rec"].HeaderText = "Последний опрос";
+            dgCounters.Columns["last_rec"].DefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;
 
             //Отключение ручной сортировки столбцов
             foreach (DataGridViewColumn c in dgCounters.Columns)
@@ -356,6 +360,24 @@ namespace OblikCleaner
         private void BtnGetDB_Click(object sender, EventArgs e)
         {
             GetOblikCounters();
+        }
+
+        private void BtnLastAsk_Click(object sender, EventArgs e)
+        {
+            OblikDB.GetLastRequest();
+            foreach (DataRow row in Counters.tblCounters.Rows)
+            {
+                int port = (int)row["port"];
+                int addr = (int)row["addr"];
+                IEnumerable<DataRow> query = from myrow in OblikDB.dbOblik.AsEnumerable()
+                                             where ((myrow.Field<int>("port") == port) && (myrow.Field<int>("addr") == addr))
+                                             select myrow;
+                if (query.Any())
+                {
+                    row["last_rec"] = query.First().Field<DateTime>("last_rec");
+                }            
+            }
+            dgCounters.Refresh();
         }
     }
 }

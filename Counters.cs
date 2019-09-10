@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using System.IO;
 using System.Xml.Linq;
+using System;
 
 
 
@@ -78,6 +79,19 @@ namespace OblikCleaner
                 DefaultValue = false
             };
             tblCounters.Columns.Add(column);
+
+            //Дата последнего опроса
+            column = new DataColumn
+            {
+                DataType = typeof(DateTime),
+                ColumnName = "last_rec",
+                ReadOnly = true,
+                Unique = false,
+                AllowDBNull = true,
+            };
+            tblCounters.Columns.Add(column);
+
+
             LoadData(); // Загрузка данных из файла, если он существует
         }
 
