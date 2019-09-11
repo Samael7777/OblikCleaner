@@ -15,18 +15,9 @@ namespace OblikCleaner
         static public DataTable dbOblik;    //список счетчиков    
 
         public static void Initialize() => CreateTableHeaders();
-        public static void GetList()                        //Получить список счетчиков из БД
-        {
-            MyAction action = new MyAction(GetCounters);
-            Execute(action);
-        }
-        public static void GetLastRequest()                 //Получить время последнего опроса счетчиков
-        {
-            MyAction action = new MyAction(GetLastAsk);
-            Execute(action);
-        }
+
         
-        static private void Execute(MyAction action)        //Выполнить команду БД 
+        static private void CreateConnection(ref FbConnection connection)   //Создать соединение к БД
         {
             isError = false;
             ErrorMsg = "";
@@ -43,14 +34,8 @@ namespace OblikCleaner
             };
             try
             {
-                using (con = new FbConnection(cs.ToString()))
-                {
-                    con.Open();
-                    action.Invoke();
-                    con.Close();
-                }
-
-
+                connection.ConnectionString = cs.ToString();
+                connection.Open();
             }
             catch (Exception e)
             {
@@ -58,7 +43,15 @@ namespace OblikCleaner
                 ErrorMsg = e.Message;
             }
         }
-        static private void CreateTableHeaders()            //Создание заголовков таблицы счетчиков
+        static private void CloseConnection (ref FbConnection connection)   //Закрыть соединение к БД
+        {
+            if (connection.State != ConnectionState.Closed)
+            {
+                connection.Close();
+                connection.Dispose();
+            }
+        }
+        static private void CreateTableHeaders()                //Создание заголовков таблицы счетчиков
         {
             DataColumn column;
             dbOblik = new DataTable();
@@ -112,10 +105,16 @@ namespace OblikCleaner
             };
             dbOblik.Columns.Add(column);
         }       
-        static private void GetCounters()                   //Получение списка счетчиков из БД
+        static public void GetCountersList()                   //Получение списка счетчиков из БД
         {
             FbDataReader reader;
             FbCommand cmd;
+            FbConnection con = new FbConnection();
+            CreateConnection(ref con);
+            if (isError)    //Выход при наличии ошибки
+            {
+                return;
+            }
             string sql;
             //Получение списка счетчиков
             sql = "SELECT * FROM OBLIK";
@@ -133,7 +132,7 @@ namespace OblikCleaner
                 }
             }
             reader.Close();
-                //Получение портов
+            //Получение портов
             foreach (DataRow row in dbOblik.Rows)
             {
                 sql = "SELECT COM_PORT FROM NETWORKS WHERE KEY_NETWORK=@net";
@@ -195,12 +194,17 @@ namespace OblikCleaner
                     }
                 }
                 reader.Close();
+                cmd.Dispose();
             }
+            CloseConnection(ref con);
         }
-        static private void GetLastAsk()                    //Получить время последнего опроса счетчиков
+        static public void GetLastRequest()                    //Получить время последнего опроса счетчиков
         {
             FbDataReader reader;
             FbCommand cmd;
+            FbConnection con = new FbConnection();
+            CreateConnection(ref con);
+            if(isError) { return; } // Выход при ошибке
             string sql;
             sql = "select " +
                 "day_graph.date_info " +
@@ -223,6 +227,8 @@ namespace OblikCleaner
                     }
                 }
                 reader.Close();
+                cmd.Dispose();
+                CloseConnection(ref con);
             }
         }
     } 

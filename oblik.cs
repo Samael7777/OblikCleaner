@@ -2,27 +2,37 @@
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
+using System.IO;
+
+
 
 namespace Obliks
 {
-    public class Oblik : IDisposable
+    public class Oblik
     {
 
         //Локальные переменные
-        private bool disposed = false;          //Флаг деструктора
-        private int _port;                      //порт счетчика
-        private int _addr;                      //адрес счетчика
-        private int _baudrate;                  //скорость работы порта, 9600 бод - по умолчанию
+        private readonly int _port;             //порт счетчика
+        private readonly int _addr;             //адрес счетчика
+        private readonly int _baudrate;         //скорость работы порта, 9600 бод - по умолчанию
         private int _timeout, _repeats;         //таймаут и повторы
         private byte[] _passwd;                 //пароль
-        private byte[] _rbuf;                   //Буфер для чтения
         private bool _isError;                  //Наличие ошибки
         private string _error_txt = "";         //текст ошибки
         private byte _user;                     //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
-        private object SerialIncoming;          //Монитор таймаута чтения порта
+        private readonly object SerialIncoming;          //Монитор таймаута чтения порта
 
         //Интерфейс класса
-
+        //Структура строки суточного графика
+        public struct DayGraphRow
+        {
+            uint time;          //время записи
+            float act_en_p;     //активная энергия "+" за период сохранения 
+            float act_en_n;     //активная энергия "-" за период сохранения
+            float rea_en_p;     //реактивная энергия "+" за период сохранения
+            float rea_en_n;     //реактивная энергия "-" за период сохранения
+            ushort[] channel;   //Количество импульсов по каналам
+        }
         //Структура ответа счетчика
         public int L1Result { get; set; }                //Результат фрейма L1
         public string L1ResultMsg { get; set; }          //Результат фрейма L1, расшифровка
@@ -32,14 +42,6 @@ namespace Obliks
         public string L2ResultMsg { get; set; }          //Результат запроса L2, расшифровка
         public int L2Lenght { get; set; }                //Количество данных, успешно обработанных операцией
         public byte[] L2Data { get; set; }               //Данные L2
-        public byte[] RawResponse
-        {
-            get => _rbuf;
-        }                    //Сырые данные со счетчика
-        public int RawResponseLenght
-        {
-            get => _rbuf.Length;
-        }                  //Количество байт в ответе счетчика
         public int Repeats
         {
             set => _repeats = value;
@@ -50,7 +52,7 @@ namespace Obliks
             set => _timeout = value;
             get => _timeout;
         }           //Таймаут соединения
-        public bool isError
+        public bool IsError
         {
             set => _isError = value;
             get => _isError;
@@ -93,34 +95,6 @@ namespace Obliks
         public Oblik(int port, int addr, int timeout, int repeats) : this(port, 9600, addr, timeout, repeats, "") { }
         public Oblik(int port, int addr) : this(port, 9600, addr, 500, 2, "") { }
 
-        //Удаление объекта класса и очистка мусора
-        public void Dispose()
-        {
-            Dispose(true);
-            GC.SuppressFinalize(this);
-        }
-        protected virtual void Dispose(bool disposing)
-        {
-            if (!disposed)
-            {
-                // If disposing equals true, dispose all managed
-                // and unmanaged resources.
-                disposed = true;
-                if (disposing)
-                {
-                    // Dispose managed resources.
-
-                }
-                // Dispose unmanaged resources.
-                _rbuf = null;
-                _passwd = null;
-            }
-        }
-        ~Oblik()
-        {
-            Dispose(false);
-        }
-
         //Реализация
 
         /*
@@ -134,9 +108,9 @@ namespace Obliks
         {
             byte[] _l1;                                                     //Посылка 1 уровня
             byte[] _l2;                                                     //Посылка 2 уровня
-            if (AccType > 0) { AccType = 1; }                              //Все, что больше 0 - команда на запись
-                                                                           //Формируем запрос L2
-
+            if (AccType != 0) { AccType = 1; }                              //Все, что больше 0 - команда на запись
+            
+            //Формируем запрос L2
             _l2 = new byte[5 + (len + 8) * AccType];                        //5 байт заголовка + 8 байт пароля + данные 
             _l2[0] = (byte)((segment & 127) + AccType * 128);               //(биты 0 - 6 - номер сегмента, бит 7 = 1 - операция записи)
             _l2[1] = _user;                                                 //Указываем пользователя
@@ -145,24 +119,11 @@ namespace Obliks
             _l2[4] = len;                                                   //Размер считываемых данных
 
             //Если команда - на запись в сегмент
-            if (AccType > 0)
+            if (AccType == 1)
             {
                 Array.Copy(data, 0, _l2, 5, len);                               //Копируем данные в L2
                 Array.Copy(_passwd, 0, _l2, len + 5, 8);                        //Копируем пароль в L2
-
-                //Шифрование полей "Данные" и "Пароль". Сперто из оригинальной процедуры шифрования
-                byte _x1 = 0x3A;
-                for (int i = 0; i <= 7; i++) { _x1 ^= _passwd[i]; }
-                byte _dpcsize = (byte)(len + 8);                                //Размер "Данные + "Пароль" 
-                int k = 4;
-                for (int i = _dpcsize - 1; i >= 0; i--)
-                {
-                    byte _x2 = _l2[k++];
-                    _l2[k] ^= _x1;
-                    _l2[k] ^= _x2;
-                    _l2[k] ^= _passwd[i % 8];
-                    _x1 += (byte)i;
-                }
+                Encode(ref _l2);                                                //Шифруем данные и пароль L2
             }
 
             //Формируем фрейм L1
@@ -177,52 +138,17 @@ namespace Obliks
             _l1[_l1.Length - 1] = 0;
             for (int i = 2; i < (_l1.Length - 1); i++)
             {
-                _l1[_l1.Length - 1] = (byte)(_l1[_l1.Length - 1] ^ _l1[i]);
+                _l1[_l1.Length - 1] ^= (byte)_l1[i];
             }
 
             //Обмен данными со счетчиком
-            RSExchange(_l1);
+            byte[] answer = new byte[0];
+            OblikQuery(_l1, ref answer);
 
             //Заполняем структуру ответа счетчика
             if (!_isError)
             {
-                L1Result = _rbuf[0];
-                L1ResultMsg = ParseL1error(L1Result);
-                if (L1Result == 1)
-                {
-                    L1Lenght = _rbuf[1];
-                    L1Sum = _rbuf[_rbuf.Length - 1];
-                    L2Result = _rbuf[2];
-                    L2ResultMsg = ParseL2error(L2Result);
-                    L2Lenght = _rbuf[3];
-                    if (L2Result == 0)
-                    {
-                        L2Data = new byte[L1Lenght - 2];
-                        Array.Copy(_rbuf, 4, L2Data, 0, _rbuf.Length - 5);
-                    }
-                    else
-                    {
-                        _isError = true;
-                        _error_txt = L2ResultMsg;
-                    }
-                    //Проверка контрольной суммы
-                    byte cs = 0;
-                    for (int i = 0; i < _rbuf.Length; i++)
-                    {
-                        cs ^= _rbuf[i];
-                    }
-                    if (cs != 0)
-                    {
-                        _isError = true;
-                        _error_txt = "Ошибка контрольной суммы";
-                    }
-                    else
-                    {
-                        _isError = false;
-                        _error_txt = L1ResultMsg;
-                    }
-                }
-
+                AnswerParser(answer);
             }
 
         }
@@ -234,11 +160,7 @@ namespace Obliks
             //Порядок байт в счетчике - обратный по отношению к пк, переворачиваем
             if (!_isError)
             {
-                byte[] _tmp = new byte[L2Data.Length];
-                Array.Copy(L2Data, 0, _tmp, 0, L2Data.Length);
-                Array.Reverse(_tmp);
-                int res = BitConverter.ToUInt16(_tmp, 0);
-                return res;
+                return (int)(L2Data[0] + (int)(L2Data[1] << 8));
             }
             else return -1;
         }
@@ -246,10 +168,12 @@ namespace Obliks
         //Стирание суточного графика
         public void CleanDayGraph()
         {
+            byte segment = 88;
+            ushort offset = 0;
             byte[] cmd = new byte[2];
             cmd[0] = (byte)~(_addr);
             cmd[1] = (byte)_addr;
-            SegmentAccsess(88, 0, (byte)cmd.Length, cmd, 1);
+            SegmentAccsess(segment, offset, (byte)cmd.Length, cmd, 1);
         }
 
         //Установка текущего времени в счетчике
@@ -266,6 +190,48 @@ namespace Obliks
             _tbuf[2] = (byte)((_ctime >> 8) & 0xff);
             _tbuf[3] = (byte)(_ctime & 0xff);
             SegmentAccsess(65, 0, (byte)_tbuf.Length, _tbuf, 1);
+        }
+
+        //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
+        DayGraphRow[] GetDayGraph(uint lines, uint offset)
+        {
+            const byte segment = 45;                            //Сегмент суточного графика
+            const uint LineLen = 28;                            //28 байт на 1 строку данных по протоколу счетчика
+            const uint MaxReqLines = 8;                         //Максимальное количество строк в запросе
+            const byte MaxBytes = (byte)(LineLen * MaxReqLines);        //Максимальный размер запроса
+            byte bytestoread;                                    //Байт в запросе
+            DayGraphRow[] answer = null;
+            byte[] _buf;                                        //Буфер
+            uint TotalLines = (uint)GetDayGraphRecs();          //Количество строк суточного графика фактически в счетчике
+            if (IsError) { return answer; }                     //Возврат null в случае ошибки
+            if (TotalLines == 0) { return answer; }             //Если нет записей, нечего запрашивать
+            if ((lines + offset) > TotalLines)                  //Если запрос выходит за диапазон, запросить только последнюю строку
+            {
+                lines = 1;
+                offset = TotalLines - 1;
+            }
+            uint OffsetBytes = offset * LineLen;
+            uint BytesReq = (lines - offset) * LineLen;                 //Запрошено байт
+            _buf = new byte[BytesReq];
+            ushort currofs = 0;                                //Текущий сдвиг
+            ushort maxoffs = (ushort)(OffsetBytes + (lines - 1) * LineLen); //Максимальный сдвиг для чтения последней строки
+            while (currofs <= maxoffs)
+            {
+                if (((BytesReq - currofs) / MaxBytes) >0)
+                {
+                    bytestoread = MaxBytes;
+                }
+                else
+                {
+                    bytestoread = (byte)((BytesReq - currofs) % MaxBytes);
+                }
+                SegmentAccsess(segment, currofs, bytestoread, null, 0);
+                if (IsError) { break; }
+                Array.Resize(ref _buf, (int)(currofs + LineLen));
+                Array.Copy(L2Data, 0, _buf, currofs, L2Data.Length);
+                currofs += MaxBytes;
+            }
+
         }
 
         //Парсер ошибок L1
@@ -339,13 +305,12 @@ namespace Obliks
             return res;
         }
 
-
-
-        //Отправка запроса и получение данных WData - запрос, _rbuf - ответ
-        void RSExchange(byte[] WData)
+        //Отправка запроса и получение данных Query - запрос, Answer - ответ
+        private void OblikQuery(byte[] Query, ref byte[] Answer)
         {
             _isError = false;
             _error_txt = "";
+            byte[] _rbuf = new byte[0];                   //Буфер для чтения
             //Параметризация и открытие порта
             using (SerialPort com = new SerialPort
             {
@@ -364,7 +329,7 @@ namespace Obliks
                 // Событие чтения данных из порта
                 void DataReciever(object s, SerialDataReceivedEventArgs ea)
                 {
-                    _rbuf = new byte[com.BytesToRead];
+                    Array.Resize(ref _rbuf, com.BytesToRead);
                     com.Read(_rbuf, 0, _rbuf.Length);
                     lock (SerialIncoming)
                     {
@@ -378,7 +343,7 @@ namespace Obliks
                     //Отправка данных
                     com.DiscardOutBuffer();                                                                 //очистка буфера передачи
                     com.DataReceived += new SerialDataReceivedEventHandler(DataReciever);                   //событие чтения из порта
-                    com.Write(WData, 0, WData.Length);                                                      //отправка буфера записи
+                    com.Write(Query, 0, Query.Length);                                                      //отправка буфера записи
                     com.DiscardInBuffer();                                                                  //очистка буфера приема
                     //Получение ответа
                     int r = _repeats;
@@ -402,6 +367,11 @@ namespace Obliks
                         }
                     }
                     com.Close();        //Закрыть порт
+                    if (!IsError)
+                    {
+                        Array.Resize(ref Answer, _rbuf.Length);
+                        Array.Copy(_rbuf, 0, Answer, 0, _rbuf.Length);
+                    }
                 }
                 catch (Exception e)
                 {
@@ -410,9 +380,85 @@ namespace Obliks
                 }
                 finally
                 {
-                    WData = null;
+                    Query = null;
                 }
             }
         }
+
+        //Процедура шифрования данных L2
+        private void Encode(ref byte[] l2)
+        {
+            //Шифрование полей "Данные" и "Пароль". Сперто из оригинальной процедуры шифрования
+            byte _x1 = 0x3A;
+            for (int i = 0; i <= 7; i++) { _x1 ^= _passwd[i]; }
+            byte _dpcsize = (byte)(l2[4] + 8);                                //Размер "Данные + "Пароль" 
+            int k = 4;
+            for (int i = _dpcsize - 1; i >= 0; i--)
+            {
+                byte _x2 = l2[k++];
+                l2[k] ^= _x1;
+                l2[k] ^= _x2;
+                l2[k] ^= _passwd[i % 8];
+                _x1 += (byte)i;
+            }
+        }
+
+        //Парсер ответа счетчика
+        private void AnswerParser(byte[] answer)
+        {
+            L1Result = answer[0];
+            L1ResultMsg = ParseL1error(L1Result);
+            if (L1Result == 1)
+            {
+                L1Lenght = answer[1];
+                L1Sum = answer[answer.Length - 1];
+                L2Result = answer[2];
+                L2ResultMsg = ParseL2error(L2Result);
+                L2Lenght = answer[3];
+                if (L2Result == 0)
+                {
+                    L2Data = new byte[L1Lenght - 2];
+                    Array.Copy(answer, 4, L2Data, 0, answer.Length - 5);
+                }
+                else
+                {
+                    _isError = true;
+                    _error_txt = L2ResultMsg;
+                }
+                //Проверка контрольной суммы
+                byte cs = 0;
+                for (int i = 0; i < answer.Length; i++)
+                {
+                    cs ^= answer[i];
+                }
+                if (cs != 0)
+                {
+                    _isError = true;
+                    _error_txt = "Ошибка контрольной суммы";
+                }
+                else
+                {
+                    _isError = false;
+                    _error_txt = L1ResultMsg;
+                }
+            }
+        }
+    
+        //Группа преобразователей массива байт в различные типы данных. Принимается, что старший байт имеет младший адрес
+        private UInt64 ArrayToUint64(byte[] array)                      //Преобразование массива байт в UInt64 
+        {
+            UInt64 res = 0;
+            for (int i = 0; i < array.Length; i++)
+            {
+                res += (UInt64)array[array.Length - i] << (8 * i);
+            }
+            return res;
+        }
+        private float ArrayToFloat(byte[] array)                        //Преобразование массива байт в float
+        {
+            BinaryReader reader = new BinaryReader(new MemoryStream(array));
+            return reader.ReadSingle();
+        }
+
     }
 }
