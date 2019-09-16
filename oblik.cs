@@ -180,11 +180,11 @@ namespace Obliks
         public void SetCurrentTime()
         {
             UInt32 _ctime;  //Время по стандарту t_time
-            DateTime _curtime, _btime;
+            DateTime CurrentTime, BaseTime;
             byte[] _tbuf = new byte[4]; //Буфер для передачи счетчику
-            _btime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);       //Базовая точка времени 01.01.1970 00:00 GMT
-            _curtime = System.DateTime.Now.ToUniversalTime();                   //Текущее время
-            _ctime = (UInt32)(_curtime - _btime).TotalSeconds + 2;              //2 секунды на вычисление, отправку и т.д.
+            BaseTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);       //Базовая точка времени 01.01.1970 00:00 GMT
+            CurrentTime = System.DateTime.Now.ToUniversalTime();                   //Текущее время
+            _ctime = (UInt32)(CurrentTime - BaseTime).TotalSeconds + 2;              //2 секунды на вычисление, отправку и т.д.
             _tbuf[0] = (byte)((_ctime >> 24) & 0xff);
             _tbuf[1] = (byte)((_ctime >> 16) & 0xff);
             _tbuf[2] = (byte)((_ctime >> 8) & 0xff);
@@ -195,17 +195,15 @@ namespace Obliks
         //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
         DayGraphRow[] GetDayGraph(uint lines, uint offset)
         {
-            const byte segment = 45;                            //Сегмент суточного графика
-            const uint LineLen = 28;                            //28 байт на 1 строку данных по протоколу счетчика
-            const uint MaxReqLines = 8;                         //Максимальное количество строк в запросе
-            const byte MaxBytes = (byte)(LineLen * MaxReqLines);        //Максимальный размер запроса
-            byte bytestoread;                                    //Байт в запросе
-            DayGraphRow[] answer = null;
-            byte[] _buf;                                        //Буфер
-            uint TotalLines = (uint)GetDayGraphRecs();          //Количество строк суточного графика фактически в счетчике
-            if (IsError) { return answer; }                     //Возврат null в случае ошибки
-            if (TotalLines == 0) { return answer; }             //Если нет записей, нечего запрашивать
-            if ((lines + offset) > TotalLines)                  //Если запрос выходит за диапазон, запросить только последнюю строку
+            const byte segment = 45;                                //Сегмент суточного графика
+            const uint LineLen = 28;                                //28 байт на 1 строку данных по протоколу счетчика
+            const uint MaxReqLines = 8;                             //Максимальное количество строк в запросе
+            const byte MaxBytes = (byte)(LineLen * MaxReqLines);    //Максимальный размер запроса
+            byte bytestoread;                                       //Байт в запросе
+            byte[] _buf;                                            //Буфер
+            uint TotalLines = (uint)GetDayGraphRecs();              //Количество строк суточного графика фактически в счетчике
+            if (IsError || (TotalLines == 0)) { return null; }      //Возврат null в случае ошибки или отсутствия записей для считывания
+            if ((lines + offset) > TotalLines)                      //Если запрос выходит за диапазон, запросить только последнюю строку
             {
                 lines = 1;
                 offset = TotalLines - 1;
@@ -445,20 +443,50 @@ namespace Obliks
         }
     
         //Группа преобразователей массива байт в различные типы данных. Принимается, что старший байт имеет младший адрес
-        private UInt64 ArrayToUint64(byte[] array)                      //Преобразование массива байт в UInt64 
+        private UInt32 ToUint32(byte[] array)                      //Преобразование массива байт в UInt64 
         {
-            UInt64 res = 0;
-            for (int i = 0; i < array.Length; i++)
+            using (MemoryStream stream = new MemoryStream(array))
             {
-                res += (UInt64)array[array.Length - i] << (8 * i);
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    return reader.ReadUInt32();
+                }
             }
-            return res;
         }
-        private float ArrayToFloat(byte[] array)                        //Преобразование массива байт в float
+        private float ToFloat(byte[] array)                        //Преобразование массива байт в float
         {
-            BinaryReader reader = new BinaryReader(new MemoryStream(array));
-            return reader.ReadSingle();
+            using (MemoryStream stream = new MemoryStream(array))
+            {
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    return reader.ReadSingle();
+                }
+            }
         }
-
+        private UInt16 ToUint16(byte[] array)                       //Преобразование массива байт в word (оно же uint16)
+        {
+            using (MemoryStream stream = new MemoryStream(array))
+            {
+                using (BinaryReader reader = new BinaryReader(stream))
+                {
+                    return reader.ReadUInt16();
+                }
+            }
+        }
+        private DateTime ToUTCTime(byte[] array)                       //Преобразование массива байт в word (оно же uint16)
+        {
+            UInt32 _ctime;  //Время по стандарту t_time
+            DateTime BaseTime, Time;
+            BaseTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);       //Базовая точка времени 01.01.1970 00:00 GMT
+            _ctime = ToUint32(array);                                             //Время в формате C (time_t) 
+            Time = BaseTime.AddSeconds(_ctime);
+            return Time;
+        }
+        private float ToUminiflo(byte[] array)
+        {
+            UInt16 _data = ToUint16(array);
+            UInt16 man, exp;
+            
+        }
     }
 }
