@@ -1,11 +1,11 @@
-﻿using Obliks;
+﻿using Oblik;
 using System;
+using System.Collections.Generic;
+using System.Data;
 using System.IO;
+using System.Linq;
 using System.ServiceProcess;
 using System.Windows.Forms;
-using System.Data;
-using System.Linq;
-using System.Collections.Generic;
 
 namespace OblikCleaner
 {
@@ -201,7 +201,7 @@ namespace OblikCleaner
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
             lstr = String.Format("Получение данных со счетчика COM{0}, адрес:{1:X2}", port, addr);
             LogLine(lstr);
-            Oblik oblik = new Oblik(port, addr);
+            Oblik.Oblik oblik = new Oblik.Oblik(port, addr);
             result = oblik.GetDayGraphRecs();
             if (!oblik.IsError)
             {
@@ -221,7 +221,7 @@ namespace OblikCleaner
             int port = (int)dgCounters.Rows[index].Cells["port"].Value;
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
             LogLine(String.Format("Очистка суточного графика счетчика COM{0}, адрес:{1:X2}", port, addr));
-            Oblik oblik = new Oblik(port, addr);
+            Oblik.Oblik oblik = new Oblik.Oblik(port, addr);
             oblik.CleanDayGraph();      //Очистка суточного графика
             if (!oblik.IsError)
             {

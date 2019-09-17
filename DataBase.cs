@@ -9,14 +9,14 @@ namespace OblikCleaner
     {
         delegate void MyAction();
         static private FbConnection con;    //соединение с БД
-   
+
         static public bool isError;         //Состояние ошибки
         static public string ErrorMsg;      //Текст ошибки
         static public DataTable dbOblik;    //список счетчиков    
 
         public static void Initialize() => CreateTableHeaders();
 
-        
+
         static private void CreateConnection(ref FbConnection connection)   //Создать соединение к БД
         {
             isError = false;
@@ -43,7 +43,7 @@ namespace OblikCleaner
                 ErrorMsg = e.Message;
             }
         }
-        static private void CloseConnection (ref FbConnection connection)   //Закрыть соединение к БД
+        static private void CloseConnection(ref FbConnection connection)   //Закрыть соединение к БД
         {
             if (connection.State != ConnectionState.Closed)
             {
@@ -104,7 +104,7 @@ namespace OblikCleaner
                 DataType = typeof(DateTime)
             };
             dbOblik.Columns.Add(column);
-        }       
+        }
         static public void GetCountersList()                   //Получение списка счетчиков из БД
         {
             FbDataReader reader;
@@ -204,7 +204,7 @@ namespace OblikCleaner
             FbCommand cmd;
             FbConnection con = new FbConnection();
             CreateConnection(ref con);
-            if(isError) { return; } // Выход при ошибке
+            if (isError) { return; } // Выход при ошибке
             string sql;
             sql = "select " +
                 "day_graph.date_info " +
@@ -231,5 +231,5 @@ namespace OblikCleaner
                 CloseConnection(ref con);
             }
         }
-    } 
+    }
 }

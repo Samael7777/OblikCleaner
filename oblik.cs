@@ -1,37 +1,61 @@
 ﻿using System;
+using System.IO;
 using System.IO.Ports;
 using System.Text;
 using System.Threading;
-using System.IO;
 
 
 
-namespace Obliks
+namespace Oblik
 {
     public class Oblik
     {
 
         //Локальные переменные
-        private readonly int _port;             //порт счетчика
-        private readonly int _addr;             //адрес счетчика
-        private readonly int _baudrate;         //скорость работы порта, 9600 бод - по умолчанию
-        private int _timeout, _repeats;         //таймаут и повторы
-        private byte[] _passwd;                 //пароль
-        private bool _isError;                  //Наличие ошибки
-        private string _error_txt = "";         //текст ошибки
-        private byte _user;                     //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
-        private readonly object SerialIncoming;          //Монитор таймаута чтения порта
+        private readonly int _port;                     //порт счетчика
+        private readonly int _addr;                     //адрес счетчика
+        private readonly int _baudrate;                 //скорость работы порта, 9600 бод - по умолчанию
+        private int _timeout, _repeats;                 //таймаут и повторы
+        private byte[] _passwd;                         //пароль
+        private bool _isError;                          //Наличие ошибки
+        private string _error_txt = "";                 //текст ошибки
+        private byte _user;                             //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
+        private readonly object SerialIncoming;         //Монитор таймаута чтения порта
 
         //Интерфейс класса
-        //Структура строки суточного графика
-        public struct DayGraphRow
+
+        //Структуры данных
+        public struct DayGraphRow                        //Структура строки суточного графика
         {
-            uint time;          //время записи
-            float act_en_p;     //активная энергия "+" за период сохранения 
-            float act_en_n;     //активная энергия "-" за период сохранения
-            float rea_en_p;     //реактивная энергия "+" за период сохранения
-            float rea_en_n;     //реактивная энергия "-" за период сохранения
-            ushort[] channel;   //Количество импульсов по каналам
+            public DateTime time;          //время записи
+            public float act_en_p;     //активная энергия "+" за период сохранения 
+            public float act_en_n;     //активная энергия "-" за период сохранения
+            public float rea_en_p;     //реактивная энергия "+" за период сохранения
+            public float rea_en_n;     //реактивная энергия "-" за период сохранения
+            public ushort[] channel;   //Количество импульсов по каналам
+        }
+        public struct CalcUnitsStruct                    //Структура параметров вычислений
+
+        {
+            public float
+                ener_fct,
+                powr_fct,
+                curr_fct,
+                volt_fct,
+                curr_1w,
+                curr_2w,
+                volt_1w,
+                volt_2w,
+                pwr_lim_A,
+                pwr_lim_B,
+                pwr_lim_C,
+                pwr_lim_D;
+            public sbyte
+                ener_unit,
+                powr_unit,
+                curr_unit,
+                volt_unit;
+            public byte save_const;
         }
         //Структура ответа счетчика
         public int L1Result { get; set; }                //Результат фрейма L1
@@ -42,35 +66,36 @@ namespace Obliks
         public string L2ResultMsg { get; set; }          //Результат запроса L2, расшифровка
         public int L2Lenght { get; set; }                //Количество данных, успешно обработанных операцией
         public byte[] L2Data { get; set; }               //Данные L2
+
         public int Repeats
         {
             set => _repeats = value;
             get => _repeats;
-        }           //Количество повторов передачи
+        }                           //Количество повторов передачи
         public int Timeout
         {
             set => _timeout = value;
             get => _timeout;
-        }           //Таймаут соединения
+        }                           //Таймаут соединения
         public bool IsError
         {
             set => _isError = value;
             get => _isError;
-        }          //Индикатор наличия ошибки
+        }                          //Индикатор наличия ошибки
         public string ErrorMsg
         {
             get => _error_txt;
-        }       //Последнее сообщение об ошибке
+        }                       //Последнее сообщение об ошибке
         public string Password
         {
             set => _passwd = Encoding.Default.GetBytes(value);
             get => Encoding.Default.GetString(_passwd);
-        }       //Пароль счетчика
+        }                       //Пароль счетчика
         public int User
         {
             set => _user = (byte)value;
             get => _user;
-        }              //Пользователь
+        }                              //Пользователь
         public Oblik(int port, int baudrate, int addr, int timeout, int repeats, string password)
         {
             _port = port;
@@ -109,7 +134,7 @@ namespace Obliks
             byte[] _l1;                                                     //Посылка 1 уровня
             byte[] _l2;                                                     //Посылка 2 уровня
             if (AccType != 0) { AccType = 1; }                              //Все, что больше 0 - команда на запись
-            
+
             //Формируем запрос L2
             _l2 = new byte[5 + (len + 8) * AccType];                        //5 байт заголовка + 8 байт пароля + данные 
             _l2[0] = (byte)((segment & 127) + AccType * 128);               //(биты 0 - 6 - номер сегмента, бит 7 = 1 - операция записи)
@@ -152,9 +177,7 @@ namespace Obliks
             }
 
         }
-
-        //Получить количество записей суточного графика
-        public int GetDayGraphRecs()
+        public int GetDayGraphRecs()                                //Получить количество записей суточного графика
         {
             SegmentAccsess(44, 0, 2, null, 0);
             //Порядок байт в счетчике - обратный по отношению к пк, переворачиваем
@@ -164,9 +187,7 @@ namespace Obliks
             }
             else return -1;
         }
-
-        //Стирание суточного графика
-        public void CleanDayGraph()
+        public void CleanDayGraph()                                 //Стирание суточного графика
         {
             byte segment = 88;
             ushort offset = 0;
@@ -175,9 +196,7 @@ namespace Obliks
             cmd[1] = (byte)_addr;
             SegmentAccsess(segment, offset, (byte)cmd.Length, cmd, 1);
         }
-
-        //Установка текущего времени в счетчике
-        public void SetCurrentTime()
+        public void SetCurrentTime()                                //Установка текущего времени в счетчике
         {
             UInt32 _ctime;  //Время по стандарту t_time
             DateTime CurrentTime, BaseTime;
@@ -191,49 +210,55 @@ namespace Obliks
             _tbuf[3] = (byte)(_ctime & 0xff);
             SegmentAccsess(65, 0, (byte)_tbuf.Length, _tbuf, 1);
         }
-
-        //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
-        DayGraphRow[] GetDayGraph(uint lines, uint offset)
+        public DayGraphRow[] GetDayGraph(uint lines, uint offset)   //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
         {
+            DayGraphRow[] res;
             const byte segment = 45;                                //Сегмент суточного графика
             const uint LineLen = 28;                                //28 байт на 1 строку данных по протоколу счетчика
             const uint MaxReqLines = 8;                             //Максимальное количество строк в запросе
-            const byte MaxBytes = (byte)(LineLen * MaxReqLines);    //Максимальный размер запроса
-            byte bytestoread;                                       //Байт в запросе
+            const byte MaxReqBytes = (byte)(LineLen * MaxReqLines); //Максимальный размер запроса в байтах
             byte[] _buf;                                            //Буфер
             uint TotalLines = (uint)GetDayGraphRecs();              //Количество строк суточного графика фактически в счетчике
-            if (IsError || (TotalLines == 0)) { return null; }      //Возврат null в случае ошибки или отсутствия записей для считывания
+            if (_isError || (TotalLines == 0)) { return null; }      //Возврат null в случае ошибки или отсутствия записей для считывания
             if ((lines + offset) > TotalLines)                      //Если запрос выходит за диапазон, запросить только последнюю строку
             {
                 lines = 1;
                 offset = TotalLines - 1;
             }
             uint OffsetBytes = offset * LineLen;
-            uint BytesReq = (lines - offset) * LineLen;                 //Запрошено байт
+            uint BytesReq = (lines - offset) * LineLen;                     //Всего запрошено байт
             _buf = new byte[BytesReq];
-            ushort currofs = 0;                                //Текущий сдвиг
+            ushort curroffs = 0;                                            //Текущий сдвиг в байтах
             ushort maxoffs = (ushort)(OffsetBytes + (lines - 1) * LineLen); //Максимальный сдвиг для чтения последней строки
-            while (currofs <= maxoffs)
+            byte bytestoread = MaxReqBytes;                                 //Байт в запросе
+            uint LinesRead = 0;                                             //Счетчик считанных строк
+            while (curroffs <= maxoffs)
             {
-                if (((BytesReq - currofs) / MaxBytes) >0)
+                if (((BytesReq - curroffs) / MaxReqBytes) == 0)
                 {
-                    bytestoread = MaxBytes;
+                    bytestoread = (byte)((BytesReq - curroffs) % MaxReqBytes);
                 }
-                else
-                {
-                    bytestoread = (byte)((BytesReq - currofs) % MaxBytes);
-                }
-                SegmentAccsess(segment, currofs, bytestoread, null, 0);
-                if (IsError) { break; }
-                Array.Resize(ref _buf, (int)(currofs + LineLen));
-                Array.Copy(L2Data, 0, _buf, currofs, L2Data.Length);
-                currofs += MaxBytes;
-            }
 
+                SegmentAccsess(segment, curroffs, bytestoread, null, 0);
+                if (_isError) { break; }                                     //Выход из цикла при ошибке
+                Array.Resize(ref _buf, (int)(curroffs + LineLen));
+                Array.Copy(L2Data, 0, _buf, curroffs, L2Data.Length);       //Результат считывания помещается в L2Data
+                curroffs += bytestoread;
+                LinesRead += bytestoread / LineLen;
+            }
+            //Получение из ответа структуры суточного графика
+            res = new DayGraphRow[LinesRead];
+            for (int i = 0; i < LinesRead; i++)
+            {
+                byte[] _tmp = new byte[LineLen];
+                Array.Copy(_buf, (i * LineLen), _tmp, 0, LineLen);
+                res[i] = ToDayGraphRow(_tmp);
+            }
+            return res;
         }
 
-        //Парсер ошибок L1
-        private string ParseL1error(int error)
+        //Вспомогательные функции для внутреннего использования
+        private string ParseL1error(int error)                      //Парсер ошибок L1
         {
             string res;
             switch (error)
@@ -253,9 +278,7 @@ namespace Obliks
             }
             return res;
         }
-
-        //Парсер ошибок L2
-        private string ParseL2error(int error)
+        private string ParseL2error(int error)                      //Парсер ошибок L2
         {
             string res;
             switch (error)
@@ -302,9 +325,7 @@ namespace Obliks
             }
             return res;
         }
-
-        //Отправка запроса и получение данных Query - запрос, Answer - ответ
-        private void OblikQuery(byte[] Query, ref byte[] Answer)
+        private void OblikQuery(byte[] Query, ref byte[] Answer)    //Отправка запроса и получение данных Query - запрос, Answer - ответ
         {
             _isError = false;
             _error_txt = "";
@@ -382,9 +403,7 @@ namespace Obliks
                 }
             }
         }
-
-        //Процедура шифрования данных L2
-        private void Encode(ref byte[] l2)
+        private void Encode(ref byte[] l2)                          //Процедура шифрования данных L2
         {
             //Шифрование полей "Данные" и "Пароль". Сперто из оригинальной процедуры шифрования
             byte _x1 = 0x3A;
@@ -400,9 +419,7 @@ namespace Obliks
                 _x1 += (byte)i;
             }
         }
-
-        //Парсер ответа счетчика
-        private void AnswerParser(byte[] answer)
+        private void AnswerParser(byte[] answer)                    //Парсер ответа счетчика
         {
             L1Result = answer[0];
             L1ResultMsg = ParseL1error(L1Result);
@@ -441,9 +458,9 @@ namespace Obliks
                 }
             }
         }
-    
-        //Группа преобразователей массива байт в различные типы данных. Принимается, что старший байт имеет младший адрес
-        private UInt32 ToUint32(byte[] array)                      //Преобразование массива байт в UInt64 
+
+        //Группа преобразователей массива байт в различные типы данных. Принимается, что старший байт имеет младший адрес (big-endian)
+        private UInt32 ToUint32(byte[] array)                      //Преобразование массива байт в UInt32 
         {
             using (MemoryStream stream = new MemoryStream(array))
             {
@@ -463,7 +480,7 @@ namespace Obliks
                 }
             }
         }
-        private UInt16 ToUint16(byte[] array)                       //Преобразование массива байт в word (оно же uint16)
+        private UInt16 ToUint16(byte[] array)                      //Преобразование массива байт в word (оно же uint16)
         {
             using (MemoryStream stream = new MemoryStream(array))
             {
@@ -473,7 +490,7 @@ namespace Obliks
                 }
             }
         }
-        private DateTime ToUTCTime(byte[] array)                       //Преобразование массива байт в word (оно же uint16)
+        private DateTime ToUTCTime(byte[] array)                   //Преобразование массива байт в дату и время
         {
             UInt32 _ctime;  //Время по стандарту t_time
             DateTime BaseTime, Time;
@@ -482,11 +499,62 @@ namespace Obliks
             Time = BaseTime.AddSeconds(_ctime);
             return Time;
         }
-        private float ToUminiflo(byte[] array)
+        private float ToUminiflo(byte[] array)                     //Преобразование массива байт в uminiflo 
         {
             UInt16 _data = ToUint16(array);
             UInt16 man, exp;
-            
+            float res;
+            man = (UInt16)(_data & 0x7FF);                                      //Мантисса - биты 0-10
+            exp = (UInt16)((_data & 0xF800) >> 11);                             //Порядок - биты 11-15
+            res = (float)System.Math.Pow(2, (exp - 15)) * (1 + man / 2048);     //Pow - возведение в степень
+            return res;
+        }
+        private float ToSminiflo(byte[] array)                     //Преобразование массива байт в sminiflo
+        {
+            UInt16 _data = ToUint16(array);
+            UInt16 man, exp, sig;
+            float res;
+            sig = (UInt16)(_data & (UInt16)1);                                  //Знак - бит 0
+            man = (UInt16)((_data & 0x7FE) >> 1);                               //Мантисса - биты 1-10
+            exp = (UInt16)((_data & 0xF800) >> 11);                             //Порядок - биты 11-15
+            res = (float)(System.Math.Pow(2, (exp - 15)) * (1 + man / 2048) * System.Math.Pow(-1, sig));     //Pow - возведение в степень
+            return res;
+        }
+        private DayGraphRow ToDayGraphRow(byte[] array)            //Преобразование массива байт в строку суточного графика
+        {
+            DayGraphRow res = new DayGraphRow();
+            byte[] _tmp = new byte[0];
+            int index = 0;
+            //time (4 байта)
+            Array.Resize(ref _tmp, 4);
+            Array.Copy(array, index, _tmp, 0, 4);
+            res.time = ToUTCTime(_tmp).ToLocalTime();
+            index += 4;
+            //act_en_p (2 байта)
+            Array.Resize(ref _tmp, 2);
+            Array.Copy(array, index, _tmp, 0, 2);
+            res.act_en_p = ToUminiflo(_tmp);
+            index += 2;
+            //act_en_n (2 байта)
+            Array.Copy(array, index, _tmp, 0, 2);
+            res.act_en_n = ToUminiflo(_tmp);
+            index += 2;
+            //rea_en_p (2 байта)
+            Array.Copy(array, index, _tmp, 0, 2);
+            res.rea_en_p = ToUminiflo(_tmp);
+            index += 2;
+            //rea_en_n (2 байта)
+            Array.Copy(array, index, _tmp, 0, 2);
+            res.rea_en_n = ToUminiflo(_tmp);
+            index += 2;
+            res.channel = new ushort[8];
+            for (int i = 0; i < 8; i++)
+            {
+                Array.Copy(array, index, _tmp, 0, 2);
+                res.channel[i] = ToUint16(_tmp);
+                index += 2;
+            }
+            return res;
         }
     }
 }
