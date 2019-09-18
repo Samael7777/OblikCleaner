@@ -21,18 +21,18 @@ namespace Oblik
         private string _error_txt = "";                 //текст ошибки
         private byte _user;                             //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
         private readonly object SerialIncoming;         //Монитор таймаута чтения порта
-
+        private CalcUnitsStruct _CalcUnits;             //Параметры вычислений   
         //Интерфейс класса
 
         //Структуры данных
         public struct DayGraphRow                        //Структура строки суточного графика
         {
-            public DateTime time;          //время записи
-            public float act_en_p;     //активная энергия "+" за период сохранения 
-            public float act_en_n;     //активная энергия "-" за период сохранения
-            public float rea_en_p;     //реактивная энергия "+" за период сохранения
-            public float rea_en_n;     //реактивная энергия "-" за период сохранения
-            public ushort[] channel;   //Количество импульсов по каналам
+            public DateTime time;       //время записи
+            public float act_en_p;      //активная энергия "+" за период сохранения 
+            public float act_en_n;      //активная энергия "-" за период сохранения
+            public float rea_en_p;      //реактивная энергия "+" за период сохранения
+            public float rea_en_n;      //реактивная энергия "-" за период сохранения
+            public ushort[] channel;    //Количество импульсов по каналам
         }
         public struct CalcUnitsStruct                    //Структура параметров вычислений
 
@@ -66,7 +66,7 @@ namespace Oblik
         public string L2ResultMsg { get; set; }          //Результат запроса L2, расшифровка
         public int L2Lenght { get; set; }                //Количество данных, успешно обработанных операцией
         public byte[] L2Data { get; set; }               //Данные L2
-
+        //Свойства
         public int Repeats
         {
             set => _repeats = value;
@@ -96,6 +96,19 @@ namespace Oblik
             set => _user = (byte)value;
             get => _user;
         }                              //Пользователь
+        public Nullable<CalcUnitsStruct> CalcUnits                //Параметры вычислений
+        {
+            get
+            {
+                GetCalcUnits();
+                return _CalcUnits;
+            }
+            set
+            {
+                _CalcUnits = value;
+                SetCalcUnits();
+            }
+        }
         public Oblik(int port, int baudrate, int addr, int timeout, int repeats, string password)
         {
             _port = port;
@@ -116,6 +129,7 @@ namespace Oblik
             }
             _user = 2;
             SerialIncoming = new object();
+            _CalcUnits = new CalcUnitsStruct();
         }
         public Oblik(int port, int addr, int timeout, int repeats) : this(port, 9600, addr, timeout, repeats, "") { }
         public Oblik(int port, int addr) : this(port, 9600, addr, 500, 2, "") { }
@@ -198,21 +212,14 @@ namespace Oblik
         }
         public void SetCurrentTime()                                //Установка текущего времени в счетчике
         {
-            UInt32 _ctime;  //Время по стандарту t_time
-            DateTime CurrentTime, BaseTime;
-            byte[] _tbuf = new byte[4]; //Буфер для передачи счетчику
-            BaseTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);       //Базовая точка времени 01.01.1970 00:00 GMT
-            CurrentTime = System.DateTime.Now.ToUniversalTime();                   //Текущее время
-            _ctime = (UInt32)(CurrentTime - BaseTime).TotalSeconds + 2;              //2 секунды на вычисление, отправку и т.д.
-            _tbuf[0] = (byte)((_ctime >> 24) & 0xff);
-            _tbuf[1] = (byte)((_ctime >> 16) & 0xff);
-            _tbuf[2] = (byte)((_ctime >> 8) & 0xff);
-            _tbuf[3] = (byte)(_ctime & 0xff);
-            SegmentAccsess(65, 0, (byte)_tbuf.Length, _tbuf, 1);
+            DateTime CurrentTime = System.DateTime.Now.ToUniversalTime();        //Текущее время в формате UTC
+            CurrentTime.AddSeconds(2);                                           //2 секунды на вычисление, отправку и т.д.
+            byte[] Buf = ToTime(CurrentTime); 
+            SegmentAccsess(65, 0, (byte)Buf.Length, Buf, 1);
         }
-        public DayGraphRow[] GetDayGraph(uint lines, uint offset)   //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
+        public Nullable<DayGraphRow>[] GetDayGraph(uint lines, uint offset)   //Получение суточного графика: lines - количество строк, offset - смещение (в строках)
         {
-            DayGraphRow[] res;
+            Nullable <DayGraphRow>[] res;
             const byte segment = 45;                                //Сегмент суточного графика
             const uint LineLen = 28;                                //28 байт на 1 строку данных по протоколу счетчика
             const uint MaxReqLines = 8;                             //Максимальное количество строк в запросе
@@ -238,7 +245,6 @@ namespace Oblik
                 {
                     bytestoread = (byte)((BytesReq - curroffs) % MaxReqBytes);
                 }
-
                 SegmentAccsess(segment, curroffs, bytestoread, null, 0);
                 if (_isError) { break; }                                     //Выход из цикла при ошибке
                 Array.Resize(ref _buf, (int)(curroffs + LineLen));
@@ -247,7 +253,7 @@ namespace Oblik
                 LinesRead += bytestoread / LineLen;
             }
             //Получение из ответа структуры суточного графика
-            res = new DayGraphRow[LinesRead];
+            res = new Nullable<DayGraphRow>[LinesRead];
             for (int i = 0; i < LinesRead; i++)
             {
                 byte[] _tmp = new byte[LineLen];
@@ -258,7 +264,23 @@ namespace Oblik
         }
 
         //Вспомогательные функции для внутреннего использования
-        private string ParseL1error(int error)                      //Парсер ошибок L1
+        private void GetCalcUnits()                                 //Получить параметры вычислений
+        {
+            byte segment = 56;                                      //Сегмент чтения параметров вычислений
+            UInt16 offset = 0;
+            byte len = 57;                                          //Размер данных сегмента
+            SegmentAccsess(segment, offset, len, null, 0);
+            if (!_isError || (L2Data.Length != 57)) { return; }
+            _CalcUnits = ToCalcUnits(L2Data);
+        }
+        private void SetCalcUnits()                                //Записать параметры вычислений
+        {
+            byte segment = 56;                                     //Сегмент чтения параметров вычислений
+            UInt16 offset = 0;
+            byte[] data = CalcUnitsToByte(_CalcUnits);
+            SegmentAccsess(segment, offset, (byte)data.Length, data, 1);
+        }
+        private string ParseL1error(int error)                     //Парсер ошибок L1
         {
             string res;
             switch (error)
@@ -278,7 +300,7 @@ namespace Oblik
             }
             return res;
         }
-        private string ParseL2error(int error)                      //Парсер ошибок L2
+        private string ParseL2error(int error)                     //Парсер ошибок L2
         {
             string res;
             switch (error)
@@ -325,7 +347,7 @@ namespace Oblik
             }
             return res;
         }
-        private void OblikQuery(byte[] Query, ref byte[] Answer)    //Отправка запроса и получение данных Query - запрос, Answer - ответ
+        private void OblikQuery(byte[] Query, ref byte[] Answer)   //Отправка запроса и получение данных Query - запрос, Answer - ответ
         {
             _isError = false;
             _error_txt = "";
@@ -403,7 +425,7 @@ namespace Oblik
                 }
             }
         }
-        private void Encode(ref byte[] l2)                          //Процедура шифрования данных L2
+        private void Encode(ref byte[] l2)                         //Процедура шифрования данных L2
         {
             //Шифрование полей "Данные" и "Пароль". Сперто из оригинальной процедуры шифрования
             byte _x1 = 0x3A;
@@ -419,7 +441,7 @@ namespace Oblik
                 _x1 += (byte)i;
             }
         }
-        private void AnswerParser(byte[] answer)                    //Парсер ответа счетчика
+        private void AnswerParser(byte[] answer)                   //Парсер ответа счетчика
         {
             L1Result = answer[0];
             L1ResultMsg = ParseL1error(L1Result);
@@ -459,34 +481,104 @@ namespace Oblik
             }
         }
 
-        //Группа преобразователей массива байт в различные типы данных. Принимается, что старший байт имеет младший адрес (big-endian)
+        //Группа преобразователей массива байт в различные типы данных и наоборот. 
+        //Принимается, что старший байт имеет младший адрес (big-endian)
         private UInt32 ToUint32(byte[] array)                      //Преобразование массива байт в UInt32 
         {
-            using (MemoryStream stream = new MemoryStream(array))
+            MemoryStream stream = null;
+            try
             {
+                stream = new MemoryStream(array);
                 using (BinaryReader reader = new BinaryReader(stream))
                 {
                     return reader.ReadUInt32();
                 }
             }
+            finally
+            {
+                if (stream != null )
+                {
+                    stream.Dispose();
+                }
+            }
+        }
+        private byte[] UInt32ToByte(UInt32 data)                   //Преобразование UInt32 в массив байт
+        {
+            byte[] res = new byte[sizeof(UInt32)];
+            MemoryStream stream = null;
+            try
+            {
+                stream = new MemoryStream(res);
+                using (BinaryWriter writer = new BinaryWriter(stream))
+                {
+                    writer.Write(data);
+                    return res;
+                }
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+            }
         }
         private float ToFloat(byte[] array)                        //Преобразование массива байт в float
         {
-            using (MemoryStream stream = new MemoryStream(array))
+            MemoryStream stream = null;
+            try
             {
+                stream = new MemoryStream(array);
                 using (BinaryReader reader = new BinaryReader(stream))
                 {
                     return reader.ReadSingle();
                 }
             }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+            }
+        }
+        private byte[] FloatToByte (float data)                    //Преобразование float в массив байт
+        {
+            byte[] res = new byte[sizeof(float)];
+            MemoryStream stream = null;
+            try
+            {
+                stream = new MemoryStream(res);
+                using (BinaryWriter writer = new BinaryWriter(stream))
+                {
+                    writer.Write(data);
+                    return res;
+                }
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
+                }
+            }
         }
         private UInt16 ToUint16(byte[] array)                      //Преобразование массива байт в word (оно же uint16)
         {
-            using (MemoryStream stream = new MemoryStream(array))
+            MemoryStream stream = null;
+            try
             {
+                stream = new MemoryStream(array);
                 using (BinaryReader reader = new BinaryReader(stream))
                 {
                     return reader.ReadUInt16();
+                }
+            }
+            finally
+            {
+                if (stream != null)
+                {
+                    stream.Dispose();
                 }
             }
         }
@@ -520,40 +612,220 @@ namespace Oblik
             res = (float)(System.Math.Pow(2, (exp - 15)) * (1 + man / 2048) * System.Math.Pow(-1, sig));     //Pow - возведение в степень
             return res;
         }
-        private DayGraphRow ToDayGraphRow(byte[] array)            //Преобразование массива байт в строку суточного графика
+        private Nullable<DayGraphRow> ToDayGraphRow(byte[] array)  //Преобразование массива байт в строку суточного графика
         {
-            DayGraphRow res = new DayGraphRow();
-            byte[] _tmp = new byte[0];
-            int index = 0;
-            //time (4 байта)
-            Array.Resize(ref _tmp, 4);
-            Array.Copy(array, index, _tmp, 0, 4);
-            res.time = ToUTCTime(_tmp).ToLocalTime();
-            index += 4;
-            //act_en_p (2 байта)
-            Array.Resize(ref _tmp, 2);
-            Array.Copy(array, index, _tmp, 0, 2);
-            res.act_en_p = ToUminiflo(_tmp);
-            index += 2;
-            //act_en_n (2 байта)
-            Array.Copy(array, index, _tmp, 0, 2);
-            res.act_en_n = ToUminiflo(_tmp);
-            index += 2;
-            //rea_en_p (2 байта)
-            Array.Copy(array, index, _tmp, 0, 2);
-            res.rea_en_p = ToUminiflo(_tmp);
-            index += 2;
-            //rea_en_n (2 байта)
-            Array.Copy(array, index, _tmp, 0, 2);
-            res.rea_en_n = ToUminiflo(_tmp);
-            index += 2;
-            res.channel = new ushort[8];
-            for (int i = 0; i < 8; i++)
+            try
             {
+                DayGraphRow res = new DayGraphRow();
+                byte[] _tmp = new byte[0];
+                int index = 0;
+                //time (4 байта)
+                Array.Resize(ref _tmp, 4);
+                Array.Copy(array, index, _tmp, 0, 4);
+                res.time = ToUTCTime(_tmp).ToLocalTime();
+                index += 4;
+                //act_en_p (2 байта)
+                Array.Resize(ref _tmp, 2);
                 Array.Copy(array, index, _tmp, 0, 2);
-                res.channel[i] = ToUint16(_tmp);
+                res.act_en_p = ToUminiflo(_tmp);
                 index += 2;
+                //act_en_n (2 байта)
+                Array.Copy(array, index, _tmp, 0, 2);
+                res.act_en_n = ToUminiflo(_tmp);
+                index += 2;
+                //rea_en_p (2 байта)
+                Array.Copy(array, index, _tmp, 0, 2);
+                res.rea_en_p = ToUminiflo(_tmp);
+                index += 2;
+                //rea_en_n (2 байта)
+                Array.Copy(array, index, _tmp, 0, 2);
+                res.rea_en_n = ToUminiflo(_tmp);
+                index += 2;
+                res.channel = new ushort[8];
+                for (int i = 0; i < 8; i++)
+                {
+                    Array.Copy(array, index, _tmp, 0, 2);
+                    res.channel[i] = ToUint16(_tmp);
+                    index += 2;
+                }
+                return res;
             }
+            catch (Exception e)
+            {
+                _isError = true;
+                _error_txt = e.Message;
+                return null;
+            }
+        }
+        private byte[] ToTime (DateTime Date)                      //Преобразование DateTime в массив байт согласно t_time 
+        {
+            DateTime BaseTime = new DateTime(1970, 1, 1, 0, 0, 0, DateTimeKind.Utc);      //Базовая точка времени 01.01.1970 00:00 GMT
+            UInt32 Time;                                                                  //Время по стандарту t_time
+            byte[] Res = new byte[4];
+            Time = (UInt32)(Date - BaseTime).TotalSeconds;
+            Res[0] = (byte)((Time >> 24) & 0xff);
+            Res[1] = (byte)((Time >> 16) & 0xff);
+            Res[2] = (byte)((Time >> 8) & 0xff);
+            Res[3] = (byte)(Time & 0xff);
+            return Res;
+        }
+        private CalcUnitsStruct ToCalcUnits(byte[] array)          //Преобразование массива байт в структуру параметров вычислений
+        {
+            CalcUnitsStruct res = new CalcUnitsStruct();
+            byte[] tmp = new byte[4];
+
+            int index = 0;
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.ener_fct = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.powr_fct = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.curr_fct = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.volt_fct = ToFloat(tmp);
+            index += sizeof(float);
+
+            //Reserved1
+            index += sizeof(float);
+
+            Array.Resize(ref tmp, 1);
+            res.ener_unit = (sbyte)L2Data[index];
+            index++;
+
+            res.powr_unit = (sbyte)L2Data[index];
+            index++;
+
+            res.curr_unit = (sbyte)L2Data[index];
+            index++;
+
+            res.volt_unit = (sbyte)L2Data[index];
+            index++;
+
+            Array.Resize(ref tmp, 4);
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.curr_1w = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.curr_2w = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.volt_1w = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.volt_2w = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Resize(ref tmp, 1);
+            res.save_const = L2Data[index];
+            index++;
+
+            Array.Resize(ref tmp, 4);
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.pwr_lim_A = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.pwr_lim_B = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.pwr_lim_C = ToFloat(tmp);
+            index += sizeof(float);
+
+            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            res.pwr_lim_D = ToFloat(tmp);
+
+            return res;
+        }
+        private byte[] CalcUnitsToByte(CalcUnitsStruct CalcUnits)  //Преобразование структуры параметров вычислений в массив байт
+        {
+            byte[] res = new byte[57];
+            int index = 0;
+            byte[] tmp = new byte[4];
+
+            tmp = FloatToByte(CalcUnits.ener_fct);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.ener_fct);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.powr_fct);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.curr_fct);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.volt_fct);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            //reserved1
+            tmp[0] = 0;
+            tmp[1] = 0;
+            tmp[2] = 0;
+            tmp[3] = 0;
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            res[index] = (byte)(CalcUnits.ener_unit);
+            index++;
+
+            res[index] = (byte)(CalcUnits.powr_unit);
+            index++;
+
+            res[index] = (byte)(CalcUnits.curr_unit);
+            index++;
+
+            res[index] = (byte)(CalcUnits.volt_unit);
+            index++;
+
+            tmp = FloatToByte(CalcUnits.curr_1w);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.curr_2w);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.volt_1w);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.volt_2w);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            res[index] = CalcUnits.save_const;
+            index++;
+
+            tmp = FloatToByte(CalcUnits.pwr_lim_A);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.pwr_lim_B);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.pwr_lim_C);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+            index += sizeof(float);
+
+            tmp = FloatToByte(CalcUnits.pwr_lim_D);
+            Array.Copy(tmp, 0, res, index, sizeof(float));
+
             return res;
         }
     }

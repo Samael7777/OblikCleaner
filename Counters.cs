@@ -9,7 +9,7 @@ namespace OblikCleaner
 {
     public static class Counters
     {
-        public static DataTable tblCounters { get; set; }                  //Таблица для хранения списка счетчиков
+        public static DataTable CountersTable { get; set; }                //Таблица для хранения списка счетчиков
         const string counters_file = "counters.xml";                       //Имя XML с данными
         private static XDocument xCountersFile;                            //Привязка к XML
 
@@ -17,7 +17,7 @@ namespace OblikCleaner
         public static void Initialize()
         {
             DataColumn column;      //Тип "столбец таблицы"
-            tblCounters = new DataTable("counters");
+            CountersTable = new DataTable("counters");
 
             //Создание структуры таблицы
 
@@ -30,7 +30,7 @@ namespace OblikCleaner
                 Unique = false,
                 AllowDBNull = true
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
             //Порт подключения счетчика
             column = new DataColumn
@@ -42,7 +42,7 @@ namespace OblikCleaner
                 DefaultValue = 1,
                 AllowDBNull = false
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
             //Адрес счетчика
             column = new DataColumn
@@ -54,7 +54,7 @@ namespace OblikCleaner
                 AllowDBNull = false,
                 DefaultValue = 0
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
             //Количество записей суточного графика
             column = new DataColumn
@@ -66,7 +66,7 @@ namespace OblikCleaner
                 AllowDBNull = false,
                 DefaultValue = "Нет данных"
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
             //Статус выбора счетчиков
             column = new DataColumn
@@ -78,7 +78,7 @@ namespace OblikCleaner
                 AllowDBNull = false,
                 DefaultValue = false
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
             //Дата последнего опроса
             column = new DataColumn
@@ -89,7 +89,7 @@ namespace OblikCleaner
                 Unique = false,
                 AllowDBNull = true,
             };
-            tblCounters.Columns.Add(column);
+            CountersTable.Columns.Add(column);
 
 
             LoadData(); // Загрузка данных из файла, если он существует
@@ -104,12 +104,12 @@ namespace OblikCleaner
                 xCountersFile = XDocument.Load(counters_file);
                 foreach (XElement e in xCountersFile.Element("Counters").Elements("Counter"))
                 {
-                    DataRow row = tblCounters.NewRow();
+                    DataRow row = CountersTable.NewRow();
                     row["name"] = e.Element("name").Value;
                     row["port"] = e.Element("port").Value;
                     row["addr"] = e.Element("addr").Value;
                     row["sel"] = e.Element("sel").Value;
-                    tblCounters.Rows.Add(row);
+                    CountersTable.Rows.Add(row);
                 }
             }
         }
@@ -119,7 +119,7 @@ namespace OblikCleaner
         {
             xCountersFile = new XDocument();
             XElement counters = new XElement("Counters");
-            foreach (DataRow row in tblCounters.Rows)
+            foreach (DataRow row in CountersTable.Rows)
             {
                 XElement counter = new XElement("Counter");
                 counter.Add(new XElement("name", row["name"].ToString()));

@@ -1,5 +1,4 @@
-﻿using Oblik;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.Data;
 using System.IO;
@@ -29,7 +28,7 @@ namespace OblikCleaner
         private void MassAction(MyAction action)                                              //Массовая операция над выделенными строками
         {
             bool MassSel = false;
-            for (int i = 0; i < Counters.tblCounters.Rows.Count; i++)
+            for (int i = 0; i < Counters.CountersTable.Rows.Count; i++)
             {
                 if (dgCounters.Rows[i].Cells["sel"].Value != null && (bool)dgCounters.Rows[i].Cells["sel"].Value == true)
                 {
@@ -46,18 +45,18 @@ namespace OblikCleaner
         private void MassDelete()                                                               //Удаление выбранных записей
         {
             bool MassSel = false;
-            for (int i = Counters.tblCounters.Rows.Count - 1; i >= 0; i--)
+            for (int i = Counters.CountersTable.Rows.Count - 1; i >= 0; i--)
             {
                 if (dgCounters.Rows[i].Cells["sel"].Value != null && (bool)dgCounters.Rows[i].Cells["sel"].Value == true)
                 {
                     MassSel = true;
-                    Counters.tblCounters.Rows.RemoveAt(i);
+                    Counters.CountersTable.Rows.RemoveAt(i);
                 }
             }
             if (!MassSel)
             {
                 int i = dgCounters.CurrentCell.RowIndex;
-                Counters.tblCounters.Rows.RemoveAt(i);
+                Counters.CountersTable.Rows.RemoveAt(i);
             }
         }
         private void SetSettings()                                                              // Начальные настройки формы
@@ -68,7 +67,7 @@ namespace OblikCleaner
         private void CreareDataTable()                                                          //Настройка отображения таблицы счетчиков
         {
             //Создание столбцов отображаемой таблицы
-            dgCounters.DataSource = Counters.tblCounters;
+            dgCounters.DataSource = Counters.CountersTable;
             dgCounters.SelectionMode = DataGridViewSelectionMode.FullRowSelect; //Выбирать сразу всю строку
             dgCounters.MultiSelect = false;                                     //Запретить выбор нескольких строк
             dgCounters.ColumnHeadersDefaultCellStyle.Alignment = DataGridViewContentAlignment.MiddleCenter;  //Выравнивание заголовков по центру
@@ -276,11 +275,11 @@ namespace OblikCleaner
             {
                 foreach (DataRow dbr in OblikDB.dbOblik.Rows)
                 {
-                    DataRow cr = Counters.tblCounters.NewRow();
+                    DataRow cr = Counters.CountersTable.NewRow();
                     cr["port"] = dbr["port"];
                     cr["addr"] = dbr["addr"];
                     cr["name"] = dbr["name"];
-                    Counters.tblCounters.Rows.Add(cr);
+                    Counters.CountersTable.Rows.Add(cr);
                 }
                 dgCounters.Refresh();
             }
@@ -291,7 +290,7 @@ namespace OblikCleaner
         }
         //Обработчики событий элементов формы
         private void FrmMain_FormClosed(object sender, FormClosedEventArgs e) => Counters.SaveData();
-        private void CmAdd_Click(object sender, EventArgs e) => Counters.tblCounters.Rows.Add();
+        private void CmAdd_Click(object sender, EventArgs e) => Counters.CountersTable.Rows.Add();
         private void CmDel_Click(object sender, EventArgs e)                            //Удаление выбранных счетчиков
         {
             DialogResult dialogResult = MessageBox.Show("Удалить выбранные записи?", "Подтверждение", MessageBoxButtons.OKCancel);
@@ -324,7 +323,7 @@ namespace OblikCleaner
         }
         private void BtnSave_Click(object sender, EventArgs e) => Counters.SaveData();
         private void ChkSaveLogs_CheckedChanged(object sender, EventArgs e) => Settings.SaveLogs = chkSaveLogs.Checked;
-        private void BtnAdd_Click(object sender, EventArgs e) => Counters.tblCounters.Rows.Add();
+        private void BtnAdd_Click(object sender, EventArgs e) => Counters.CountersTable.Rows.Add();
         private void DgCounters_CellValueChanged(object sender, DataGridViewCellEventArgs e) => Counters.SaveData();
         private void BtnCleanLog_Click(object sender, EventArgs e) => log.Items.Clear();
         private void BtnSvcStop_Click(object sender, EventArgs e) => StopOblikServices();
@@ -364,7 +363,7 @@ namespace OblikCleaner
         private void BtnLastAsk_Click(object sender, EventArgs e)
         {
             OblikDB.GetLastRequest();
-            foreach (DataRow row in Counters.tblCounters.Rows)
+            foreach (DataRow row in Counters.CountersTable.Rows)
             {
                 int port = (int)row["port"];
                 int addr = (int)row["addr"];

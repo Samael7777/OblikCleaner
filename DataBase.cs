@@ -7,16 +7,11 @@ namespace OblikCleaner
 {
     public static class OblikDB
     {
-        delegate void MyAction();
-        static private FbConnection con;    //соединение с БД
-
         static public bool isError;         //Состояние ошибки
         static public string ErrorMsg;      //Текст ошибки
         static public DataTable dbOblik;    //список счетчиков    
 
         public static void Initialize() => CreateTableHeaders();
-
-
         static private void CreateConnection(ref FbConnection connection)   //Создать соединение к БД
         {
             isError = false;
@@ -48,8 +43,8 @@ namespace OblikCleaner
             if (connection.State != ConnectionState.Closed)
             {
                 connection.Close();
-                connection.Dispose();
             }
+            connection.Dispose();
         }
         static private void CreateTableHeaders()                //Создание заголовков таблицы счетчиков
         {
@@ -110,6 +105,7 @@ namespace OblikCleaner
             FbDataReader reader;
             FbCommand cmd;
             FbConnection con = new FbConnection();
+            FbParameter param;
             CreateConnection(ref con);
             if (isError)    //Выход при наличии ошибки
             {
@@ -118,36 +114,41 @@ namespace OblikCleaner
             string sql;
             //Получение списка счетчиков
             sql = "SELECT * FROM OBLIK";
-            cmd = new FbCommand(sql, con);
-            reader = cmd.ExecuteReader();
-            if (reader.HasRows)
+            using (cmd = new FbCommand(sql, con))
             {
-                while (reader.Read())
-                {
-                    DataRow row = dbOblik.NewRow();
-                    row["addr"] = reader["ADDRESS"];
-                    row["net_key"] = reader["KEY_NETWORK"];
-                    row["cntr_id"] = reader["KEY_COUNTER"];
-                    dbOblik.Rows.Add(row);
-                }
-            }
-            reader.Close();
-            //Получение портов
-            foreach (DataRow row in dbOblik.Rows)
-            {
-                sql = "SELECT COM_PORT FROM NETWORKS WHERE KEY_NETWORK=@net";
-                cmd = new FbCommand(sql, con);
-                FbParameter pNet = new FbParameter("@net", (int)row["net_key"]);
-                cmd.Parameters.Add(pNet);
                 reader = cmd.ExecuteReader();
                 if (reader.HasRows)
                 {
                     while (reader.Read())
                     {
-                        row["port"] = reader.GetValue(0);
+                        DataRow row = dbOblik.NewRow();
+                        row["addr"] = reader["ADDRESS"];
+                        row["net_key"] = reader["KEY_NETWORK"];
+                        row["cntr_id"] = reader["KEY_COUNTER"];
+                        dbOblik.Rows.Add(row);
                     }
                 }
                 reader.Close();
+            }
+            
+            //Получение портов
+            foreach (DataRow row in dbOblik.Rows)
+            {
+                sql = "SELECT COM_PORT FROM NETWORKS WHERE KEY_NETWORK=@net";
+                using (cmd = new FbCommand(sql, con))
+                {
+                    param = new FbParameter("@net", (int)row["net_key"]);
+                    cmd.Parameters.Add(param);
+                    reader = cmd.ExecuteReader();
+                    if (reader.HasRows)
+                    {
+                        while (reader.Read())
+                        {
+                            row["port"] = reader.GetValue(0);
+                        }
+                    }
+                    reader.Close();
+                }
                 //Получение названий счетчиков
                 sql = "SELECT " +
                         "FIDERS.NAME_FIDER " +
@@ -160,18 +161,21 @@ namespace OblikCleaner
                             "AND (CHANNELS.CHANNEL_NUM = 1) " +
                             "AND (CHANNELS.KEY_COUNTER = @cntr)" +
                         ")";
-                cmd = new FbCommand(sql, con);
-                FbParameter cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
-                cmd.Parameters.Add(cntr);
-                reader = cmd.ExecuteReader();
-                if (reader.HasRows)
+                using (cmd = new FbCommand(sql, con))
                 {
-                    while (reader.Read())
+                    param = new FbParameter("@cntr", (int)row["cntr_id"]);
+                    cmd.Parameters.Add(param);
+                    reader = cmd.ExecuteReader();
+                    if (reader.HasRows)
                     {
-                        row["name"] = reader.GetValue(0);
+                        while (reader.Read())
+                        {
+                            row["name"] = reader.GetValue(0);
+                        }
                     }
+                    reader.Close();
                 }
-                reader.Close();
+ 
                 //Получение номера основного фидера
                 sql = "SELECT " +
                     "CHANNELS.KEY_CHANNEL " +
@@ -182,19 +186,20 @@ namespace OblikCleaner
                     "AND (CHANNELS.CHANNEL_NUM = 1) " +
                     "AND (CHANNELS.CHANNEL_TYPE = 0)" +
                     ")";
-                cmd = new FbCommand(sql, con);
-                cntr = new FbParameter("@cntr", (int)row["cntr_id"]);
-                cmd.Parameters.Add(cntr);
-                reader = cmd.ExecuteReader();
-                if (reader.HasRows)
+                using (cmd = new FbCommand(sql, con))
                 {
-                    while (reader.Read())
+                    param = new FbParameter("@cntr", (int)row["cntr_id"]);
+                    cmd.Parameters.Add(param);
+                    reader = cmd.ExecuteReader();
+                    if (reader.HasRows)
                     {
-                        row["main_feeder"] = reader.GetValue(0);
+                        while (reader.Read())
+                        {
+                            row["main_feeder"] = reader.GetValue(0);
+                        }
                     }
+                    reader.Close();
                 }
-                reader.Close();
-                cmd.Dispose();
             }
             CloseConnection(ref con);
         }
@@ -215,19 +220,20 @@ namespace OblikCleaner
                 "where day_graph.key_channel = @channel)";
             foreach (DataRow row in dbOblik.Rows)
             {
-                cmd = new FbCommand(sql, con);
-                FbParameter cntr = new FbParameter("@channel", (int)row["main_feeder"]);
-                cmd.Parameters.Add(cntr);
-                reader = cmd.ExecuteReader();
-                if (reader.HasRows)
+                using (cmd = new FbCommand(sql, con))
                 {
-                    while (reader.Read())
+                    FbParameter cntr = new FbParameter("@channel", (int)row["main_feeder"]);
+                    cmd.Parameters.Add(cntr);
+                    reader = cmd.ExecuteReader();
+                    if (reader.HasRows)
                     {
-                        row["last_rec"] = reader.GetValue(0);
+                        while (reader.Read())
+                        {
+                            row["last_rec"] = reader.GetValue(0);
+                        }
                     }
+                    reader.Close();
                 }
-                reader.Close();
-                cmd.Dispose();
                 CloseConnection(ref con);
             }
         }
