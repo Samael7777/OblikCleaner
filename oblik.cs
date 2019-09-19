@@ -8,9 +8,17 @@ using System.Threading;
 
 namespace Oblik
 {
+    
+    //Типы событий
+    
+    public class ProgressEventArgs : EventArgs { public float progress; };  //Аргументы события прогресса данных
+    public class ErrEventArgs : EventArgs { public string Message; };       //Аргументы события ошибки
+    public class StatusChangeArgs : EventArgs { public string Message; };   //Аргументы события изменения статуса
+    public class DataRecievedArgs: EventArgs { public object Data; };       //Аргументы события получения данных
+
+    //Класс счетчиков Облик
     public class Oblik
     {
-
         //Локальные переменные
         private readonly int _port;                     //порт счетчика
         private readonly int _addr;                     //адрес счетчика
@@ -18,11 +26,21 @@ namespace Oblik
         private int _timeout, _repeats;                 //таймаут и повторы
         private byte[] _passwd;                         //пароль
         private bool _isError;                          //Наличие ошибки
-        private string _error_txt = "";                 //текст ошибки
         private byte _user;                             //Пользователь от 0 до 3 (3 - максимальные привелегии, 0 - минимальные)
         private readonly object SerialIncoming;         //Монитор таймаута чтения порта
-        private CalcUnitsStruct _CalcUnits;             //Параметры вычислений   
+        private CalcUnitsStruct _CalcUnits;             //Параметры вычислений  
+
         //Интерфейс класса
+        //Делегаты событий класса
+        public delegate void Progress(object sender, ProgressEventArgs e);      
+        public delegate void Error(object sender, ErrEventArgs e);
+        public delegate void StatusChange(object sender, StatusChangeArgs e);
+        public delegate void DataRecieved(object sender, DataRecievedArgs e);
+        //События класса
+        public event Progress OnProgress;               //Событие прогресса данных
+        public event Error OnError;                     //Событие ошибки
+        public event StatusChange OnStatusChange;       //Событие изменения статуса
+        public event DataRecieved OnDataRecieved;       //Событие получения данных TODO!!!!!
 
         //Структуры данных
         public struct DayGraphRow                        //Структура строки суточного графика
@@ -82,10 +100,6 @@ namespace Oblik
             set => _isError = value;
             get => _isError;
         }                          //Индикатор наличия ошибки
-        public string ErrorMsg
-        {
-            get => _error_txt;
-        }                       //Последнее сообщение об ошибке
         public string Password
         {
             set => _passwd = Encoding.Default.GetBytes(value);
@@ -96,7 +110,7 @@ namespace Oblik
             set => _user = (byte)value;
             get => _user;
         }                              //Пользователь
-        public Nullable<CalcUnitsStruct> CalcUnits                //Параметры вычислений
+        public CalcUnitsStruct CalcUnits                //Параметры вычислений
         {
             get
             {
@@ -118,7 +132,6 @@ namespace Oblik
             _baudrate = baudrate;
             _passwd = new byte[8];
             _isError = false;
-            _error_txt = "";
             if (password == "")
             {
                 for (int i = 0; i < 8; i++) { _passwd[i] = 0; }
@@ -239,6 +252,8 @@ namespace Oblik
             ushort maxoffs = (ushort)(OffsetBytes + (lines - 1) * LineLen); //Максимальный сдвиг для чтения последней строки
             byte bytestoread = MaxReqBytes;                                 //Байт в запросе
             uint LinesRead = 0;                                             //Счетчик считанных строк
+            float Progress = 0;                                             //Прогресс выполнения операции
+            float ProgressStep = (float)(100.0 / BytesReq);                 //Прогресс на 1 запрошенный байт
             while (curroffs <= maxoffs)
             {
                 if (((BytesReq - curroffs) / MaxReqBytes) == 0)
@@ -246,7 +261,9 @@ namespace Oblik
                     bytestoread = (byte)((BytesReq - curroffs) % MaxReqBytes);
                 }
                 SegmentAccsess(segment, curroffs, bytestoread, null, 0);
-                if (_isError) { break; }                                     //Выход из цикла при ошибке
+                if (_isError) { break; }                                    //Выход из цикла при ошибке
+                Progress += ProgressStep * bytestoread;
+                SetProgress(Progress);                                      //Вызов события прогресса
                 Array.Resize(ref _buf, (int)(curroffs + LineLen));
                 Array.Copy(L2Data, 0, _buf, curroffs, L2Data.Length);       //Результат считывания помещается в L2Data
                 curroffs += bytestoread;
@@ -350,22 +367,21 @@ namespace Oblik
         private void OblikQuery(byte[] Query, ref byte[] Answer)   //Отправка запроса и получение данных Query - запрос, Answer - ответ
         {
             _isError = false;
-            _error_txt = "";
             byte[] _rbuf = new byte[0];                   //Буфер для чтения
             //Параметризация и открытие порта
             using (SerialPort com = new SerialPort
-            {
-                PortName = "COM" + _port,
-                BaudRate = _baudrate,
-                Parity = Parity.None,
-                DataBits = 8,
-                StopBits = StopBits.One,
-                ReadTimeout = _timeout,
-                WriteTimeout = _timeout,
-                DtrEnable = false,
-                RtsEnable = false,
-                Handshake = Handshake.None
-            })
+                {
+                    PortName = "COM" + _port,
+                    BaudRate = _baudrate,
+                    Parity = Parity.None,
+                    DataBits = 8,
+                    StopBits = StopBits.One,
+                    ReadTimeout = _timeout,
+                    WriteTimeout = _timeout,
+                    DtrEnable = false,
+                    RtsEnable = false,
+                    Handshake = Handshake.None
+                })
             {
                 // Событие чтения данных из порта
                 void DataReciever(object s, SerialDataReceivedEventArgs ea)
@@ -383,11 +399,14 @@ namespace Oblik
                     com.Open();
                     //Отправка данных
                     com.DiscardOutBuffer();                                                                 //очистка буфера передачи
+                    ChangeStatus("Отправка запроса");
                     com.DataReceived += new SerialDataReceivedEventHandler(DataReciever);                   //событие чтения из порта
                     com.Write(Query, 0, Query.Length);                                                      //отправка буфера записи
                     com.DiscardInBuffer();                                                                  //очистка буфера приема
                     //Получение ответа
                     int r = _repeats;
+                    bool ReadOk = false;
+                    ChangeStatus("Ожидание ответа...");
                     while (r > 0)   //Повтор при ошибке
                     {
                         lock (SerialIncoming)
@@ -395,20 +414,20 @@ namespace Oblik
                             if (!Monitor.Wait(SerialIncoming, _timeout))
                             {
                                 //Если таймаут
-                                _isError = true;
-                                _error_txt = "Timeout";
+                                ChangeStatus("Timeout");
                                 r--;
                             }
                             else
                             {
                                 r = 0;
-                                _isError = false;
-                                _error_txt = "";
+                                ReadOk = true;
+                                ChangeStatus("Данные получены");
                             }
                         }
                     }
+                    if (!ReadOk) { RaiseError("Нет данных"); }
                     com.Close();        //Закрыть порт
-                    if (!IsError)
+                    if (!_isError)
                     {
                         Array.Resize(ref Answer, _rbuf.Length);
                         Array.Copy(_rbuf, 0, Answer, 0, _rbuf.Length);
@@ -416,8 +435,7 @@ namespace Oblik
                 }
                 catch (Exception e)
                 {
-                    _isError = true;
-                    _error_txt = e.Message;
+                    RaiseError(e.Message);
                 }
                 finally
                 {
@@ -445,6 +463,7 @@ namespace Oblik
         {
             L1Result = answer[0];
             L1ResultMsg = ParseL1error(L1Result);
+            ChangeStatus(L1ResultMsg);
             if (L1Result == 1)
             {
                 L1Lenght = answer[1];
@@ -459,8 +478,8 @@ namespace Oblik
                 }
                 else
                 {
-                    _isError = true;
-                    _error_txt = L2ResultMsg;
+                    ChangeStatus(L2ResultMsg);
+                    RaiseError(L2ResultMsg);
                 }
                 //Проверка контрольной суммы
                 byte cs = 0;
@@ -470,17 +489,48 @@ namespace Oblik
                 }
                 if (cs != 0)
                 {
-                    _isError = true;
-                    _error_txt = "Ошибка контрольной суммы";
+                    RaiseError("Ошибка контрольной суммы");
+                    ChangeStatus("Ошибка контрольной суммы");
                 }
                 else
                 {
                     _isError = false;
-                    _error_txt = L1ResultMsg;
+                    ChangeStatus(L2ResultMsg);
                 }
             }
         }
-
+        
+        //Генераторы событий
+        private void RaiseError(string message)                    //Вызов события ошибки 
+        {
+            ErrEventArgs args = new ErrEventArgs();
+            args.Message = message;
+            _isError = true;
+            if (OnError != null)
+            {
+                OnError(this, args);
+            }
+        }
+        private void ChangeStatus(string message)                  //Вызов события изменения статуса
+        {
+            StatusChangeArgs args = new StatusChangeArgs();
+            args.Message = message;
+            if (OnStatusChange != null)
+            {
+                OnStatusChange(this, args);
+            }
+        }
+        private void SetProgress(float progress)                   //Вызов события прогресса
+        {
+            ProgressEventArgs args = new ProgressEventArgs();
+            args.progress = progress;
+            if (OnProgress != null)
+            {
+                OnProgress(this, args);
+            }
+            
+        }
+        
         //Группа преобразователей массива байт в различные типы данных и наоборот. 
         //Принимается, что старший байт имеет младший адрес (big-endian)
         private UInt32 ToUint32(byte[] array)                      //Преобразование массива байт в UInt32 
@@ -582,6 +632,13 @@ namespace Oblik
                 }
             }
         }
+        private byte[] UInt16ToByte(UInt16 data)                   //Преобразование word(UInt16) в массив байт
+        {
+            byte[] res = new byte[2];
+            res[0] = (byte)((data & 0xFF00) >> 8);
+            res[1] = (byte)(data & 0x00FF);
+            return res;
+        }
         private DateTime ToUTCTime(byte[] array)                   //Преобразование массива байт в дату и время
         {
             UInt32 _ctime;  //Время по стандарту t_time
@@ -652,8 +709,7 @@ namespace Oblik
             }
             catch (Exception e)
             {
-                _isError = true;
-                _error_txt = e.Message;
+                RaiseError(e.Message);
                 return null;
             }
         }
@@ -675,19 +731,19 @@ namespace Oblik
             byte[] tmp = new byte[4];
 
             int index = 0;
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.ener_fct = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.powr_fct = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.curr_fct = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.volt_fct = ToFloat(tmp);
             index += sizeof(float);
 
@@ -695,53 +751,53 @@ namespace Oblik
             index += sizeof(float);
 
             Array.Resize(ref tmp, 1);
-            res.ener_unit = (sbyte)L2Data[index];
+            res.ener_unit = (sbyte)array[index];
             index++;
 
-            res.powr_unit = (sbyte)L2Data[index];
+            res.powr_unit = (sbyte)array[index];
             index++;
 
-            res.curr_unit = (sbyte)L2Data[index];
+            res.curr_unit = (sbyte)array[index];
             index++;
 
-            res.volt_unit = (sbyte)L2Data[index];
+            res.volt_unit = (sbyte)array[index];
             index++;
 
             Array.Resize(ref tmp, 4);
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.curr_1w = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.curr_2w = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.volt_1w = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.volt_2w = ToFloat(tmp);
             index += sizeof(float);
 
             Array.Resize(ref tmp, 1);
-            res.save_const = L2Data[index];
+            res.save_const = array[index];
             index++;
 
             Array.Resize(ref tmp, 4);
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.pwr_lim_A = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.pwr_lim_B = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.pwr_lim_C = ToFloat(tmp);
             index += sizeof(float);
 
-            Array.Copy(L2Data, index, tmp, 0, sizeof(float));
+            Array.Copy(array, index, tmp, 0, sizeof(float));
             res.pwr_lim_D = ToFloat(tmp);
 
             return res;
@@ -750,7 +806,7 @@ namespace Oblik
         {
             byte[] res = new byte[57];
             int index = 0;
-            byte[] tmp = new byte[4];
+            byte[] tmp;
 
             tmp = FloatToByte(CalcUnits.ener_fct);
             Array.Copy(tmp, 0, res, index, sizeof(float));
@@ -828,5 +884,5 @@ namespace Oblik
 
             return res;
         }
-    }
+    }   
 }
