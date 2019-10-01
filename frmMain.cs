@@ -5,7 +5,7 @@ using System.IO;
 using System.Linq;
 using System.ServiceProcess;
 using System.Windows.Forms;
-using Oblik;
+using OblikControl;
 
 namespace OblikCleaner
 {
@@ -195,54 +195,69 @@ namespace OblikCleaner
         }
         private void GetDGRecs(int index)                                                       //Получение заполнения суточного графика
         {
-            int result;
-            string lstr;
+            string status = string.Empty;
             int port = (int)dgCounters.Rows[index].Cells["port"].Value;
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
-            lstr = String.Format("Получение данных со счетчика COM{0}, адрес:{1:X2}", port, addr);
-            LogLine(lstr);
-            Oblik.Oblik oblik = new Oblik.Oblik(port, addr);
-            oblik.OnError += LogError;
+            LogLine($"Получение данных со счетчика COM{port}, адрес:{addr:X2}");
+            OblikConnection oc = new OblikConnection
+            {
+                Address = addr,
+                Port = port
+            };
+            Oblik oblik = new Oblik(oc);
             oblik.OnStatusChange += LogStatus;
-            result = oblik.GetDayGraphRecs();
-            if (!oblik.IsError)
+            try
             {
-                dgCounters.Rows[index].Cells["dg_recs"].Value = result;
+                dgCounters.Rows[index].Cells["dg_recs"].Value = oblik.GetDayGraphRecs();
+                status = "OK";
             }
-            else
+            catch (Exception e)
             {
+                status = "Ошибка: " + e.Message;
                 dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
             }
+            LogLine(status);
             dgCounters.Refresh();
         }
         private void CleanDGRecs(int index)                                                     //Очистка суточного графика + установка текущего времени
         {
             int port = (int)dgCounters.Rows[index].Cells["port"].Value;
             int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
-            LogLine(String.Format("Очистка суточного графика счетчика COM{0}, адрес:{1:X2}", port, addr));
-            Oblik.Oblik oblik = new Oblik.Oblik(port, addr);
-            oblik.OnError += LogError;
-            oblik.OnStatusChange += LogStatus;
-            oblik.CleanDayGraph();      //Очистка суточного графика
-            if (!oblik.IsError)
+            LogLine($"Очистка суточного графика счетчика COM{port}, адрес:{addr:X2}");
+            string status = string.Empty;
+            OblikConnection oc = new OblikConnection
             {
-                LogLine("Суточный график очищен");
+                Address = addr,
+                Port = port
+            }; 
+            Oblik oblik = new Oblik(oc);
+            oblik.OnStatusChange += LogStatus;
+            try
+            {
+                oblik.CleanDayGraph();      //Очистка суточного графика
+                status = "Суточный график очищен";
                 GetDGRecs(index);
             }
-            else
+            catch (Exception e)
             {
+                status = "Ошибка: " + e.Message;
                 dgCounters.Rows[index].Cells["dg_recs"].Value = "Ошибка";
             }
-            LogLine(String.Format("Установка текущего времени счетчика COM{0}, адрес:{1:X2}", port, addr));
-            oblik.SetCurrentTime();     //Установка текущего времени
-            if (!oblik.IsError)
+            LogLine(status);
+
+            LogLine($"Установка текущего времени счетчика COM{port}, адрес:{addr:X2}");
+
+            try
             {
-                LogLine("Текущее время установлено");
+                oblik.SetCurrentTime();     //Установка текущего времени
+                status = "Текущее время установлено";
             }
-            else
+            catch (Exception e)
             {
-                LogLine("Ошибка установки текущего времени");
+                status = "Ошибка: " + e.Message;
             }
+            LogLine(status);
+
             dgCounters.Refresh();
         }
         private void LogLine(string rec)                                                        //Лог событий
@@ -289,13 +304,9 @@ namespace OblikCleaner
                 LogLine(OblikDB.ErrorMsg);
             }
         }
-        private void LogStatus (object sender, StatusChangeArgs e)                              //Запись в лог состояния
+        private void LogStatus (object sender, StatusChangeEventArgs e)                         //Запись в лог состояния
         {
             LogLine("Статус: " + e.Message);
-        }
-        private void LogError(object sender, ErrEventArgs e)                                    //Запись в лог ошибок
-        {
-            LogLine("Ошибка: " + e.Message);
         }
         //Обработчики событий элементов формы
         private void FrmMain_FormClosed(object sender, FormClosedEventArgs e) => Counters.SaveData();
