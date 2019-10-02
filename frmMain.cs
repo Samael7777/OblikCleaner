@@ -205,7 +205,7 @@ namespace OblikCleaner
                 Port = port
             };
             Oblik oblik = new Oblik(oc);
-            oblik.OnStatusChange += LogStatus;
+            oblik.OnSegStatusChange += LogStatus;
             try
             {
                 dgCounters.Rows[index].Cells["dg_recs"].Value = oblik.GetDayGraphRecs();
@@ -231,7 +231,7 @@ namespace OblikCleaner
                 Port = port
             }; 
             Oblik oblik = new Oblik(oc);
-            oblik.OnStatusChange += LogStatus;
+            oblik.OnSegStatusChange += LogStatus;
             try
             {
                 oblik.CleanDayGraph();      //Очистка суточного графика
@@ -304,7 +304,7 @@ namespace OblikCleaner
                 LogLine(OblikDB.ErrorMsg);
             }
         }
-        private void LogStatus (object sender, StatusChangeEventArgs e)                         //Запись в лог состояния
+        private void LogStatus (object sender, OblikEventArgs e)                                //Запись в лог состояния
         {
             LogLine("Статус: " + e.Message);
         }
