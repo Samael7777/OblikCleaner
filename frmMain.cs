@@ -14,7 +14,7 @@ namespace OblikCleaner
 
     {
         //Инициализация базовых структур
-        delegate void MyAction(int index);
+        delegate void MyAction(int index);      //Делегат действия со счетчиком
 
         public frmMain()
         {
@@ -39,8 +39,11 @@ namespace OblikCleaner
             }
             if (!MassSel)
             {
-                int i = dgCounters.CurrentCell.RowIndex;
-                action.Invoke(i);
+             if (Counters.CountersTable.Rows.Count > 0)
+                {
+                    int i = dgCounters.CurrentCell.RowIndex;
+                    action.Invoke(i);
+                }
             }
         }
         private void MassDelete()                                                               //Удаление выбранных записей
@@ -260,6 +263,37 @@ namespace OblikCleaner
 
             dgCounters.Refresh();
         }
+        /// <summary>
+        /// Установка текущего времени счетчика
+        /// </summary>
+        /// <param name="index">Позиция счетчика в списке</param>
+        private void SetCurrentTime(int index)
+        {
+            int port = (int)dgCounters.Rows[index].Cells["port"].Value;
+            int addr = (int)dgCounters.Rows[index].Cells["addr"].Value;
+            LogLine($"Установка текущего времени счетчика COM{port}, адрес:{addr:X2}");
+            string status = string.Empty;
+            OblikConnection oc = new OblikConnection
+            {
+                Address = addr,
+                Port = port
+            };
+            Oblik oblik = new Oblik(oc);
+            oblik.OnSegStatusChange += LogStatus;
+            try
+            {
+                oblik.SetCurrentTime();     //Установка текущего времени
+                status = "Текущее время установлено";
+            }
+            catch (Exception e)
+            {
+                status = "Ошибка: " + e.Message;
+            }
+            LogLine(status);
+
+            dgCounters.Refresh();
+
+        }
         private void LogLine(string rec)                                                        //Лог событий
         {
             try
@@ -396,6 +430,20 @@ namespace OblikCleaner
                 }
             }
             dgCounters.Refresh();
+        }
+
+        private void BtnSetCurrTime_Click(object sender, EventArgs e)
+        {
+            if (Settings.StopService)
+            {
+                StopOblikServices();
+            }
+            MyAction action = new MyAction(SetCurrentTime);
+            MassAction(action);
+            if (Settings.StopService)
+            {
+                StartOblikServices();
+            }
         }
     }
 }
